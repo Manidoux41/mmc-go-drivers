@@ -13,6 +13,7 @@ class PlanningActivity {
   final String? arrival;
   final List<Waypoint>? stops; // Pour les Billet Collectifs (BC)
   final Vehicle? vehicle; // Lien vers l'objet véhicule complet
+  final String? driverId; // Pour identifier le conducteur (Diamant)
 
   PlanningActivity({
     required this.id,
@@ -24,6 +25,7 @@ class PlanningActivity {
     this.arrival,
     this.stops,
     this.vehicle,
+    this.driverId,
   });
 
   String? get busNumber => vehicle?.registration;

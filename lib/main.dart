@@ -7,6 +7,7 @@ import 'viewmodels/navigation_viewmodel.dart';
 import 'viewmodels/vehicle_viewmodel.dart';
 import 'viewmodels/document_viewmodel.dart';
 import 'viewmodels/subscription_viewmodel.dart';
+import 'viewmodels/fleet_admin_viewmodel.dart';
 import 'views/login/login_view.dart';
 import 'views/navigation/navigation_view.dart';
 
@@ -26,6 +27,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => NavigationViewModel()),
         ChangeNotifierProvider(create: (_) => DocumentViewModel()),
         ChangeNotifierProvider(create: (_) => SubscriptionViewModel()),
+        ChangeNotifierProvider(create: (_) => FleetAdminViewModel()),
       ],
       child: const MyApp(),
     ),

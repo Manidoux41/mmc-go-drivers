@@ -137,6 +137,11 @@ class VehicleViewModel extends ChangeNotifier {
 
   List<Vehicle> get vehicles => _vehicles;
 
+  void addVehicle(Vehicle vehicle) {
+    _vehicles.add(vehicle);
+    notifyListeners();
+  }
+
   void updateMileage(String vehicleId, double newMileage) {
     final index = _vehicles.indexWhere((v) => v.id == vehicleId);
     if (index != -1 && newMileage > _vehicles[index].mileage) {

@@ -8,6 +8,7 @@ enum PlanningViewMode { day, week, month }
 
 class PlanningViewModel extends ChangeNotifier {
   final VehicleViewModel vehicleViewModel;
+  String? _currentDriverId;
   
   DateTime _selectedDate = DateTime.now();
   PlanningViewMode _viewMode = PlanningViewMode.day;
@@ -16,11 +17,42 @@ class PlanningViewModel extends ChangeNotifier {
 
   PlanningViewModel({required this.vehicleViewModel});
 
+  void setCurrentDriver(String? driverId) {
+    _currentDriverId = driverId;
+    notifyListeners();
+  }
+
+  final List<PlanningActivity> _manualActivities = [];
+
   List<PlanningActivity> get _allActivities => [
         ..._generateDayActivities(DateTime.now()),
         ..._generateDayActivities(DateTime.now().add(const Duration(days: 1))),
         ..._generateDayActivities(DateTime.now().subtract(const Duration(days: 1))),
+        ..._manualActivities,
       ];
+
+  void addActivity(PlanningActivity activity) {
+    _manualActivities.add(activity);
+    notifyListeners();
+  }
+
+  List<PlanningActivity> getActivitiesForDriver(String driverId, DateTime date) {
+    return _allActivities.where((a) => 
+      a.driverId == driverId && 
+      a.startTime.year == date.year && 
+      a.startTime.month == date.month && 
+      a.startTime.day == date.day
+    ).toList();
+  }
+
+  List<PlanningActivity> getFilteredActivitiesForDriver(String driverId, DateTime startDate, int days) {
+    final endDate = startDate.add(Duration(days: days));
+    return _allActivities.where((a) => 
+      a.driverId == driverId && 
+      a.startTime.isAfter(startDate.subtract(const Duration(seconds: 1))) &&
+      a.startTime.isBefore(endDate)
+    ).toList();
+  }
 
   List<PlanningActivity> _generateDayActivities(DateTime date) {
     DateTime day = DateTime(date.year, date.month, date.day);
@@ -132,6 +164,17 @@ class PlanningViewModel extends ChangeNotifier {
 
   List<PlanningActivity> get filteredActivities {
     return _allActivities.where((activity) {
+      // Pour le mode individuel, on ne montre que ce qui lui est assigné
+      // Sauf si l'activité n'a pas de driverId (missions génériques / démo)
+      if (_currentDriverId != null && activity.driverId != null && activity.driverId != _currentDriverId) {
+        return false;
+      }
+
+      // Si c'est une mission manuelle sans driverId et qu'on est en mode individuel, on ne l'affiche pas
+      if (_currentDriverId != null && _manualActivities.contains(activity) && activity.driverId == null) {
+        return false;
+      }
+
       if (_viewMode == PlanningViewMode.day) {
         return activity.startTime.year == _selectedDate.year &&
             activity.startTime.month == _selectedDate.month &&

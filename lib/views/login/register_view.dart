@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../viewmodels/login_viewmodel.dart';
 import '../../viewmodels/subscription_viewmodel.dart';
+import '../../viewmodels/planning_viewmodel.dart';
 import '../subscription/paywall_view.dart';
 
 class RegisterView extends StatefulWidget {
@@ -95,6 +96,10 @@ class _RegisterViewState extends State<RegisterView> {
                         // Synchronisation du user avec le SubscriptionViewModel
                         final subVM = Provider.of<SubscriptionViewModel>(context, listen: false);
                         subVM.setUser(viewModel.currentUser!);
+
+                        // Synchronisation avec le PlanningViewModel pour le calendrier individuel
+                        final planningVM = Provider.of<PlanningViewModel>(context, listen: false);
+                        planningVM.setCurrentDriver(viewModel.currentUser!.username);
 
                         // Redirection vers le Paywall comme demandé pour les nouveaux utilisateurs sans forfait
                         Navigator.pushAndRemoveUntil(
