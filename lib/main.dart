@@ -6,7 +6,9 @@ import 'viewmodels/planning_viewmodel.dart';
 import 'viewmodels/navigation_viewmodel.dart';
 import 'viewmodels/vehicle_viewmodel.dart';
 import 'viewmodels/document_viewmodel.dart';
+import 'viewmodels/subscription_viewmodel.dart';
 import 'views/login/login_view.dart';
+import 'views/navigation/navigation_view.dart';
 
 void main() async {
   // Nécessaire pour initialiser le formatage des dates en français
@@ -23,6 +25,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => PlanningViewModel(vehicleViewModel: vehicleVM)),
         ChangeNotifierProvider(create: (_) => NavigationViewModel()),
         ChangeNotifierProvider(create: (_) => DocumentViewModel()),
+        ChangeNotifierProvider(create: (_) => SubscriptionViewModel()),
       ],
       child: const MyApp(),
     ),
@@ -45,7 +48,7 @@ class MyApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-      home: const LoginView(),
+      home: NavigationView(),
     );
   }
 }

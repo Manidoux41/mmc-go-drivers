@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../viewmodels/login_viewmodel.dart';
+import '../../viewmodels/subscription_viewmodel.dart';
+import '../../models/subscription_tier.dart';
 import '../dashboard/dashboard_view.dart';
 import '../admin/admin_settings_view.dart';
+import '../subscription/paywall_view.dart';
+import 'register_view.dart';
 
 class LoginView extends StatelessWidget {
   const LoginView({super.key});
@@ -110,12 +114,22 @@ class LoginView extends StatelessWidget {
                           onPressed: () async {
                             final success = await viewModel.login();
                             if (success && context.mounted) {
-                              Navigator.pushReplacement(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const DashboardView(),
-                                ),
-                              );
+                              // Synchronisation du user avec le SubscriptionViewModel
+                              final subVM = Provider.of<SubscriptionViewModel>(context, listen: false);
+                              subVM.setUser(viewModel.currentUser!);
+
+                              if (viewModel.currentUser!.tier == SubscriptionTier.free) {
+                                // Rediriger vers le Paywall si aucun forfait (free)
+                                Navigator.pushReplacement(
+                                  context,
+                                  MaterialPageRoute(builder: (context) => const PaywallView()),
+                                );
+                              } else {
+                                Navigator.pushReplacement(
+                                  context,
+                                  MaterialPageRoute(builder: (context) => const DashboardView()),
+                                );
+                              }
                             }
                           },
                           style: ElevatedButton.styleFrom(
@@ -132,6 +146,25 @@ class LoginView extends StatelessWidget {
                             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                           ),
                         ),
+                  const SizedBox(height: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text('Pas encore de compte ?'),
+                      TextButton(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => const RegisterView()),
+                          );
+                        },
+                        child: const Text(
+                          'S\'inscrire',
+                          style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               );
             },

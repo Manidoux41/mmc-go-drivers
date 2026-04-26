@@ -3,14 +3,13 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 import '../../viewmodels/navigation_viewmodel.dart';
-
-import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart';
-import 'package:provider/provider.dart';
-import '../../viewmodels/navigation_viewmodel.dart';
 import '../../models/planning_activity.dart';
 import '../../models/vehicle.dart';
+import '../../models/subscription_tier.dart';
+import '../../viewmodels/login_viewmodel.dart';
+import '../login/login_view.dart';
+import '../dashboard/dashboard_view.dart';
+import '../subscription/paywall_view.dart';
 
 class NavigationView extends StatefulWidget {
   final PlanningActivity? activity;
@@ -40,10 +39,89 @@ class _NavigationViewState extends State<NavigationView> {
 
   @override
   Widget build(BuildContext context) {
+    final loginVM = Provider.of<LoginViewModel>(context);
+    final user = loginVM.currentUser;
+    final tier = user?.tier ?? SubscriptionTier.free;
+
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.activity != null ? 'Itinéraire : ${widget.activity!.title}' : 'Navigation & Enregistrement'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        backgroundColor: Colors.green,
+        foregroundColor: Colors.white,
+      ),
+      drawer: Drawer(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            DrawerHeader(
+              decoration: const BoxDecoration(color: Colors.green),
+              margin: EdgeInsets.zero,
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.account_circle, size: 45, color: Colors.white),
+                    const SizedBox(height: 8),
+                    Text(
+                      user != null ? 'Bonjour, ${user.username}' : 'Compte MMC Go',
+                      style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      'Abonnement : ${tier.name}',
+                      style: const TextStyle(color: Colors.white70, fontSize: 13),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            if (user == null)
+              ListTile(
+                leading: const Icon(Icons.login, color: Colors.green),
+                title: const Text('Se connecter / S\'inscrire'),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(context, MaterialPageRoute(builder: (context) => const LoginView()));
+                },
+              )
+            else ...[
+              ListTile(
+                leading: const Icon(Icons.dashboard, color: Colors.blue),
+                title: const Text('Tableau de bord (Outils)'),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(context, MaterialPageRoute(builder: (context) => const DashboardView()));
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.star, color: Colors.orange),
+                title: const Text('Gérer mon abonnement'),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(context, MaterialPageRoute(builder: (context) => const PaywallView()));
+                },
+              ),
+              const Divider(),
+              ListTile(
+                leading: const Icon(Icons.logout, color: Colors.red),
+                title: const Text('Déconnexion'),
+                onTap: () {
+                  // Simulation de déconnexion simple
+                  Navigator.pop(context);
+                  Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const NavigationView()));
+                },
+              ),
+            ],
+            const AboutListTile(
+              icon: Icon(Icons.info),
+              applicationName: 'MMC Go Drivers',
+              applicationVersion: '1.0.0',
+              applicationLegalese: '© 2024 MMC Go',
+            ),
+          ],
+        ),
       ),
       body: Consumer<NavigationViewModel>(
         builder: (context, viewModel, child) {
@@ -87,6 +165,7 @@ class _NavigationViewState extends State<NavigationView> {
                     urlTemplate: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
                     subdomains: const ['a', 'b', 'c', 'd'],
                     userAgentPackageName: 'com.example.app',
+                    retinaMode: RetinaMode.isHighDensity(context),
                   ),
                   PolylineLayer(
                     polylines: [

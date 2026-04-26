@@ -1,21 +1,32 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../login/login_view.dart';
 import '../planning/planning_view.dart';
 import '../navigation/navigation_view.dart';
 import '../vehicle/vehicle_view.dart';
 import '../contact/contact_view.dart';
 import '../documents/document_view.dart';
+import '../subscription/paywall_view.dart';
+import '../../viewmodels/login_viewmodel.dart';
+import '../../viewmodels/subscription_viewmodel.dart';
+import '../../models/subscription_tier.dart';
 
 class DashboardView extends StatelessWidget {
   const DashboardView({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final user = Provider.of<LoginViewModel>(context).currentUser;
+    final subVM = Provider.of<SubscriptionViewModel>(context);
+    final tier = subVM.currentUser?.tier ?? user?.tier ?? SubscriptionTier.free;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Tableau de bord Chauffeur'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        title: const Text('MMC Go - Tableau de bord'),
+        backgroundColor: Colors.green,
+        foregroundColor: Colors.white,
         actions: [
+          _buildTierBadge(context, tier),
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: () {
@@ -29,54 +40,59 @@ class DashboardView extends StatelessWidget {
       body: GridView.count(
         padding: const EdgeInsets.all(20),
         crossAxisCount: 2,
-        crossAxisSpacing: 10,
-        mainAxisSpacing: 10,
+        crossAxisSpacing: 15,
+        mainAxisSpacing: 15,
         children: [
           _buildToolCard(
             context,
-            'Planning',
-            Icons.calendar_month,
-            Colors.blue,
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const PlanningView()),
-            ),
-          ),
-          _buildToolCard(
-            context, 
-            'Navigation', 
-            Icons.map, 
+            'Navigation',
+            Icons.map,
             Colors.purple,
+            isLocked: false,
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => const NavigationView()),
             ),
           ),
           _buildToolCard(
-            context, 
-            'Véhicule', 
-            Icons.directions_bus, 
+            context,
+            'Planning',
+            Icons.calendar_month,
+            Colors.blue,
+            isLocked: tier.index < SubscriptionTier.professional.index,
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const PlanningView()),
+            ),
+          ),
+          _buildToolCard(
+            context,
+            'Véhicule',
+            Icons.directions_bus,
             Colors.green,
+            isLocked: tier.index < SubscriptionTier.professional.index,
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => const VehicleView()),
             ),
           ),
           _buildToolCard(
-            context, 
-            'Documents', 
-            Icons.description, 
+            context,
+            'Documents',
+            Icons.description,
             Colors.orange,
+            isLocked: tier.index < SubscriptionTier.professional.index,
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => DocumentView()),
             ),
           ),
           _buildToolCard(
-            context, 
-            'Contact', 
-            Icons.contact_phone, 
+            context,
+            'Contact',
+            Icons.contact_phone,
             Colors.red,
+            isLocked: tier.index < SubscriptionTier.professional.index,
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => ContactView()),
@@ -87,21 +103,60 @@ class DashboardView extends StatelessWidget {
     );
   }
 
-  Widget _buildToolCard(BuildContext context, String title, IconData icon, Color color, {VoidCallback? onTap}) {
+  Widget _buildTierBadge(BuildContext context, SubscriptionTier tier) {
+    return GestureDetector(
+      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const PaywallView())),
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.2),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.white, width: 1),
+        ),
+        child: Center(
+          child: Text(
+            tier.name.toUpperCase(),
+            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildToolCard(BuildContext context, String title, IconData icon, Color color,
+      {required bool isLocked, VoidCallback? onTap}) {
     return Card(
-      elevation: 4,
+      elevation: isLocked ? 1 : 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
       child: InkWell(
-        onTap: onTap ?? () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Ouverture de $title...')),
-          );
-        },
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+        onTap: isLocked
+            ? () => Navigator.push(context, MaterialPageRoute(builder: (context) => const PaywallView()))
+            : onTap,
+        child: Stack(
           children: [
-            Icon(icon, size: 40, color: color),
-            const SizedBox(height: 10),
-            Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+            Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(icon, size: 45, color: isLocked ? Colors.grey : color),
+                  const SizedBox(height: 10),
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: isLocked ? Colors.grey : Colors.black87,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (isLocked)
+              const Positioned(
+                top: 10,
+                right: 10,
+                child: Icon(Icons.lock, size: 20, color: Colors.amber),
+              ),
           ],
         ),
       ),

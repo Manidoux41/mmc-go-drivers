@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
+import '../models/user.dart';
 
 class LoginViewModel extends ChangeNotifier {
   final TextEditingController usernameController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
+
+  User? _currentUser;
+  User? get currentUser => _currentUser;
 
   bool _isLoading = false;
   bool get isLoading => _isLoading;
@@ -15,6 +19,8 @@ class LoginViewModel extends ChangeNotifier {
 
     // Simulation d'un petit délai
     await Future.delayed(const Duration(milliseconds: 500));
+
+    _currentUser = User(username: usernameController.text, fullName: "Conducteur MMC");
 
     _isLoading = false;
     notifyListeners();
