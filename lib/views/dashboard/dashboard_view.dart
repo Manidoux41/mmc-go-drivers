@@ -102,7 +102,7 @@ class DashboardView extends StatelessWidget {
           if (tier == SubscriptionTier.diamond)
             _buildToolCard(
               context,
-              'Gestion Flotte',
+              'Administration',
               Icons.admin_panel_settings,
               Colors.blueGrey,
               isLocked: false,

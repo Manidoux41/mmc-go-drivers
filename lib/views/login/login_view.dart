@@ -3,7 +3,9 @@ import 'package:provider/provider.dart';
 import '../../viewmodels/login_viewmodel.dart';
 import '../../viewmodels/subscription_viewmodel.dart';
 import '../../viewmodels/planning_viewmodel.dart';
+import '../../viewmodels/fleet_admin_viewmodel.dart';
 import '../../models/subscription_tier.dart';
+import '../../models/user.dart';
 import '../dashboard/dashboard_view.dart';
 import '../admin/admin_settings_view.dart';
 import '../subscription/paywall_view.dart';
@@ -113,7 +115,18 @@ class LoginView extends StatelessWidget {
                       ? const CircularProgressIndicator(color: Colors.green)
                       : ElevatedButton(
                           onPressed: () async {
-                            final success = await viewModel.login();
+                            final fleetVM = Provider.of<FleetAdminViewModel>(context, listen: false);
+                            final username = viewModel.usernameController.text;
+                            final password = viewModel.passwordController.text;
+
+                            // Vérification si c'est un chauffeur créé par l'admin
+                            User? targetUser;
+                            if (fleetVM.validateCredentials(username, password)) {
+                              targetUser = fleetVM.getDriver(username);
+                            }
+
+                            final success = await viewModel.login(existingUser: targetUser);
+
                             if (success && context.mounted) {
                               // Synchronisation du user avec le SubscriptionViewModel
                               final subVM = Provider.of<SubscriptionViewModel>(context, listen: false);

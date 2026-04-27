@@ -54,4 +54,54 @@ class PdfService {
 
     await Printing.sharePdf(bytes: await pdf.save(), filename: 'planning_${date.day}_${date.month}.pdf');
   }
+
+  static Future<void> generateWeeklyPlanning(DateTime weekStart, Map<String, List<PlanningActivity>> driverActivities) async {
+    final pdf = pw.Document();
+    final dateFormat = DateFormat('dd/MM');
+    final timeFormat = DateFormat('HH:mm');
+
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4.landscape,
+        build: (pw.Context context) {
+          return [
+            pw.Header(level: 0, child: pw.Text('Planning Hebdomadaire Flotte', style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold))),
+            pw.SizedBox(height: 10),
+            pw.Table(
+              border: pw.TableBorder.all(),
+              children: [
+                pw.TableRow(
+                  decoration: const pw.BoxDecoration(color: PdfColors.grey200),
+                  children: [
+                    pw.Padding(padding: const pw.EdgeInsets.all(5), child: pw.Text('Conducteur', style: pw.TextStyle(fontWeight: pw.FontWeight.bold))),
+                    ...List.generate(7, (i) {
+                      final day = weekStart.add(Duration(days: i));
+                      return pw.Padding(padding: const pw.EdgeInsets.all(5), child: pw.Text(dateFormat.format(day), style: pw.TextStyle(fontWeight: pw.FontWeight.bold)));
+                    }),
+                  ],
+                ),
+                ...driverActivities.entries.map((entry) {
+                  return pw.TableRow(
+                    children: [
+                      pw.Padding(padding: const pw.EdgeInsets.all(5), child: pw.Text(entry.key)),
+                      ...List.generate(7, (i) {
+                        final day = weekStart.add(Duration(days: i));
+                        final dayActs = entry.value.where((a) => a.startTime.day == day.day && a.startTime.month == day.month).toList();
+                        return pw.Padding(
+                          padding: const pw.EdgeInsets.all(5),
+                          child: pw.Text(dayActs.isEmpty ? '-' : dayActs.map((a) => timeFormat.format(a.startTime)).join('\n'), style: const pw.TextStyle(fontSize: 8)),
+                        );
+                      }),
+                    ],
+                  );
+                }),
+              ],
+            ),
+          ];
+        },
+      ),
+    );
+
+    await Printing.sharePdf(bytes: await pdf.save(), filename: 'planning_hebdomadaire.pdf');
+  }
 }

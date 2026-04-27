@@ -36,6 +36,19 @@ class PlanningViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  void removeActivity(String activityId) {
+    _manualActivities.removeWhere((a) => a.id == activityId);
+    notifyListeners();
+  }
+
+  void updateActivity(PlanningActivity updatedActivity) {
+    final index = _manualActivities.indexWhere((a) => a.id == updatedActivity.id);
+    if (index != -1) {
+      _manualActivities[index] = updatedActivity;
+      notifyListeners();
+    }
+  }
+
   List<PlanningActivity> getActivitiesForDriver(String driverId, DateTime date) {
     return _allActivities.where((a) => 
       a.driverId == driverId && 
@@ -189,6 +202,45 @@ class PlanningViewModel extends ChangeNotifier {
             activity.startTime.month == _selectedDate.month;
       }
     }).toList()..sort((a, b) => a.startTime.compareTo(b.startTime));
+  }
+
+  List<String> checkRSE(List<PlanningActivity> activities) {
+    if (activities.isEmpty) return [];
+    List<String> warnings = [];
+
+    // 1. Calcul de l'Amplitude (max 12h)
+    activities.sort((a, b) => a.startTime.compareTo(b.startTime));
+    final first = activities.first.startTime;
+    final last = activities.last.endTime;
+    final amplitude = last.difference(first);
+    if (amplitude.inHours > 12) {
+      warnings.add("Amplitude de ${amplitude.inHours}h dépasse la recommandation (12h).");
+    }
+
+    // 2. Temps de conduite cumulé (max 9h)
+    Duration totalDriving = Duration.zero;
+    for (var a in activities) {
+      if (a.isDriving) {
+        totalDriving += a.duration;
+      }
+    }
+    if (totalDriving.inHours >= 9) {
+      warnings.add("Conduite totale (${totalDriving.inHours}h ${totalDriving.inMinutes % 60}m) proche ou dépasse 9h.");
+    }
+
+    // 3. Coupure (Pause 45min après 4h30)
+    // Prototype simplifié
+    Duration continuousDriving = Duration.zero;
+    for (var a in activities) {
+      if (a.isDriving) {
+        continuousDriving += a.duration;
+        if (continuousDriving.inMinutes > 270) {
+          warnings.add("Alerte : >4h30 de conduite sans coupure de 45min.");
+          break;
+        }
+      }
+    }
+    return warnings;
   }
 
   void setViewMode(PlanningViewMode mode) {

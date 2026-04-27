@@ -11,7 +11,7 @@ class LoginViewModel extends ChangeNotifier {
   bool _isLoading = false;
   bool get isLoading => _isLoading;
 
-  Future<bool> login() async {
+  Future<bool> login({User? existingUser}) async {
     debugPrint("Tentative de connexion avec : ${usernameController.text}");
     
     _isLoading = true;
@@ -20,7 +20,11 @@ class LoginViewModel extends ChangeNotifier {
     // Simulation d'un petit délai
     await Future.delayed(const Duration(milliseconds: 500));
 
-    _currentUser = User(username: usernameController.text, fullName: "Conducteur MMC");
+    if (existingUser != null) {
+      _currentUser = existingUser;
+    } else {
+      _currentUser = User(username: usernameController.text, fullName: "Conducteur MMC");
+    }
 
     _isLoading = false;
     notifyListeners();

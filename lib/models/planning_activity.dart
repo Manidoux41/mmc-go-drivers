@@ -31,6 +31,8 @@ class PlanningActivity {
   String? get busNumber => vehicle?.registration;
 
   Duration get duration => endTime.difference(startTime);
+
+  bool get isDriving => type == ActivityType.trip || type == ActivityType.bc || type == ActivityType.hlp;
 }
 
 class Waypoint {

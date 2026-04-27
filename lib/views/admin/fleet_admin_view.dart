@@ -5,6 +5,7 @@ import '../../viewmodels/vehicle_viewmodel.dart';
 import '../../viewmodels/planning_viewmodel.dart';
 import '../../models/vehicle.dart';
 import '../../models/planning_activity.dart';
+import '../../services/pdf_service.dart';
 import 'package:intl/intl.dart';
 
 class FleetAdminView extends StatelessWidget {
@@ -16,16 +17,17 @@ class FleetAdminView extends StatelessWidget {
       length: 3,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Administration Flotte (Diamant)'),
+          title: const Text('Console d\'Administration Entreprise'),
           backgroundColor: Colors.blueGrey,
           foregroundColor: Colors.white,
           bottom: const TabBar(
             labelColor: Colors.white,
             unselectedLabelColor: Colors.white70,
+            indicatorColor: Colors.orange,
             tabs: [
-              Tab(icon: Icon(Icons.people), text: 'Conducteurs'),
-              Tab(icon: Icon(Icons.directions_bus), text: 'Véhicules'),
-              Tab(icon: Icon(Icons.calendar_today), text: 'Planning'),
+              Tab(icon: Icon(Icons.people_outline), text: 'Conducteurs'),
+              Tab(icon: Icon(Icons.directions_bus_filled_outlined), text: 'Véhicules'),
+              Tab(icon: Icon(Icons.calendar_view_week), text: 'Planning Flotte'),
             ],
           ),
         ),
@@ -74,6 +76,8 @@ class _ManageDriversTab extends StatelessWidget {
   void _showAddDriverDialog(BuildContext context) {
     final usernameController = TextEditingController();
     final fullNameController = TextEditingController();
+    final passwordController = TextEditingController();
+    
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -81,19 +85,32 @@ class _ManageDriversTab extends StatelessWidget {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(controller: usernameController, decoration: const InputDecoration(labelText: 'Identifiant')),
+            TextField(controller: usernameController, decoration: const InputDecoration(labelText: 'Identifiant / Email')),
             TextField(controller: fullNameController, decoration: const InputDecoration(labelText: 'Nom Complet')),
+            TextField(
+              controller: passwordController, 
+              decoration: const InputDecoration(labelText: 'Mot de passe provisoire'),
+              obscureText: true,
+            ),
           ],
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Annuler')),
           ElevatedButton(
             onPressed: () {
-              Provider.of<FleetAdminViewModel>(context, listen: false)
-                  .addDriver(usernameController.text, fullNameController.text);
-              Navigator.pop(context);
+              if (usernameController.text.isNotEmpty && passwordController.text.isNotEmpty) {
+                Provider.of<FleetAdminViewModel>(context, listen: false).addDriver(
+                  usernameController.text, 
+                  fullNameController.text,
+                  passwordController.text,
+                );
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Conducteur créé avec succès')),
+                );
+              }
             },
-            child: const Text('Ajouter'),
+            child: const Text('Créer le compte'),
           ),
         ],
       ),
@@ -185,17 +202,35 @@ class _PlanningOverviewRootState extends State<_PlanningOverviewRoot> {
 
   @override
   Widget build(BuildContext context) {
+    final fleetVM = Provider.of<FleetAdminViewModel>(context);
+    final planningVM = Provider.of<PlanningViewModel>(context);
+
     return Column(
       children: [
         Container(
           color: Colors.blueGrey.shade50,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _buildSubTabButton(0, 'Assignation', Icons.edit_calendar),
-              _buildSubTabButton(1, 'Vue Jour', Icons.view_day),
-              _buildSubTabButton(2, 'Vue Semaine', Icons.view_week),
-            ],
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _buildSubTabButton(0, 'Assignation', Icons.edit_calendar),
+                _buildSubTabButton(1, 'Vue Jour', Icons.view_day),
+                _buildSubTabButton(2, 'Vue Semaine', Icons.view_week),
+                IconButton(
+                  icon: const Icon(Icons.picture_as_pdf, color: Colors.blueGrey),
+                  onPressed: () {
+                    final weekStart = _selectedDate.subtract(Duration(days: _selectedDate.weekday - 1));
+                    Map<String, List<PlanningActivity>> data = {};
+                    for (var driver in fleetVM.drivers) {
+                      data[driver.fullName ?? driver.username] = planningVM.getFilteredActivitiesForDriver(driver.username, weekStart, 7);
+                    }
+                    PdfService.generateWeeklyPlanning(weekStart, data);
+                  },
+                  tooltip: 'Exporter la semaine en PDF',
+                ),
+              ],
+            ),
           ),
         ),
         Expanded(
@@ -237,9 +272,6 @@ class _ManagePlanningTab extends StatefulWidget {
 class _ManagePlanningTabState extends State<_ManagePlanningTab> {
   @override
   Widget build(BuildContext context) {
-    final planningVM = Provider.of<PlanningViewModel>(context);
-    final vehicleVM = Provider.of<VehicleViewModel>(context);
-
     return Scaffold(
       body: Column(
         children: [
@@ -261,7 +293,7 @@ class _ManagePlanningTabState extends State<_ManagePlanningTab> {
                   leading: const Icon(Icons.assignment, color: Colors.blue),
                   title: const Text('Nouvelle Mission'),
                   subtitle: const Text('Cliquez sur + pour programmer une mission'),
-                  onTap: () => _showAddMissionDialog(context, widget.selectedDate),
+                  onTap: () => _showAddMissionDialog(context, widget.selectedDate, Provider.of<FleetAdminViewModel>(context, listen: false).drivers.first),
                 ),
               ],
             ),
@@ -269,75 +301,9 @@ class _ManagePlanningTabState extends State<_ManagePlanningTab> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => _showAddMissionDialog(context, widget.selectedDate),
+        onPressed: () => _showAddMissionDialog(context, widget.selectedDate, Provider.of<FleetAdminViewModel>(context, listen: false).drivers.first),
         backgroundColor: Colors.blueGrey,
         child: const Icon(Icons.edit_calendar, color: Colors.white),
-      ),
-    );
-  }
-
-  void _showAddMissionDialog(BuildContext context, DateTime date) {
-    final titleController = TextEditingController();
-    final departureController = TextEditingController();
-    final arrivalController = TextEditingController();
-    final vehicleVM = Provider.of<VehicleViewModel>(context, listen: false);
-    final fleetVM = Provider.of<FleetAdminViewModel>(context, listen: false);
-    
-    Vehicle? selectedVehicle = vehicleVM.vehicles.first;
-    var selectedDriver = fleetVM.drivers.first;
-
-    showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: Text('Mission du ${DateFormat('dd/MM/yyyy').format(date)}'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(controller: titleController, decoration: const InputDecoration(labelText: 'Titre de la mission')),
-                TextField(controller: departureController, decoration: const InputDecoration(labelText: 'Départ')),
-                TextField(controller: arrivalController, decoration: const InputDecoration(labelText: 'Arrivée')),
-                const SizedBox(height: 10),
-                DropdownButtonFormField<Vehicle>(
-                  value: selectedVehicle,
-                  decoration: const InputDecoration(labelText: 'Véhicule assigné'),
-                  items: vehicleVM.vehicles.map((v) => DropdownMenuItem(value: v, child: Text(v.registration))).toList(),
-                  onChanged: (v) => setDialogState(() => selectedVehicle = v),
-                ),
-                const SizedBox(height: 10),
-                DropdownButtonFormField(
-                  value: selectedDriver,
-                  decoration: const InputDecoration(labelText: 'Conducteur assigné'),
-                  items: fleetVM.drivers.map((d) => DropdownMenuItem(value: d, child: Text(d.fullName ?? d.username))).toList(),
-                  onChanged: (d) => setDialogState(() => selectedDriver = d!),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Annuler')),
-            ElevatedButton(
-              onPressed: () {
-                final activity = PlanningActivity(
-                  id: DateTime.now().millisecondsSinceEpoch.toString(),
-                  title: titleController.text,
-                  type: ActivityType.trip,
-                  startTime: DateTime(date.year, date.month, date.day, 8, 0),
-                  endTime: DateTime(date.year, date.month, date.day, 10, 0),
-                  departure: departureController.text,
-                  arrival: arrivalController.text,
-                  vehicle: selectedVehicle,
-                  driverId: selectedDriver.username,
-                );
-                Provider.of<PlanningViewModel>(context, listen: false).addActivity(activity);
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Mission ajoutée au planning')));
-              },
-              child: const Text('Programmer'),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -357,17 +323,34 @@ class _DailyOverviewTable extends StatelessWidget {
       child: SingleChildScrollView(
         child: DataTable(
           headingRowColor: MaterialStateProperty.all(Colors.blueGrey.shade100),
+          border: TableBorder.all(color: Colors.grey.shade300),
           columns: [
-            const DataColumn(label: Text('Conducteur')),
-            const DataColumn(label: Text('Missions du jour')),
+            const DataColumn(label: Text('Conducteur', style: TextStyle(fontWeight: FontWeight.bold))),
+            const DataColumn(label: Text('Missions du jour', style: TextStyle(fontWeight: FontWeight.bold))),
           ],
           rows: fleetVM.drivers.map((driver) {
             final activities = planningVM.getActivitiesForDriver(driver.username, date);
             return DataRow(cells: [
               DataCell(Text(driver.fullName ?? driver.username, style: const TextStyle(fontWeight: FontWeight.bold))),
-              DataCell(Text(activities.isEmpty 
-                ? 'Aucune mission' 
-                : activities.map((a) => '${DateFormat('HH:mm').format(a.startTime)}: ${a.title}').join(' / '))),
+              DataCell(
+                InkWell(
+                  onTap: () => _showDayEditDialog(context, driver, date, activities),
+                  child: Container(
+                    width: double.maxFinite,
+                    constraints: const BoxConstraints(minWidth: 200),
+                    child: activities.isEmpty 
+                      ? const Text('Aucune mission (Cliquer pour ajouter)', style: TextStyle(color: Colors.grey, fontStyle: FontStyle.italic))
+                      : Wrap(
+                          spacing: 8,
+                          children: activities.map((a) => Chip(
+                            label: Text('${DateFormat('HH:mm').format(a.startTime)}: ${a.title}', style: const TextStyle(fontSize: 10)),
+                            backgroundColor: Colors.blueGrey.shade50,
+                            visualDensity: VisualDensity.compact,
+                          )).toList(),
+                        ),
+                  ),
+                ),
+              ),
             ]);
           }).toList(),
         ),
@@ -393,16 +376,36 @@ class _WeeklyOverviewTable extends StatelessWidget {
       child: SingleChildScrollView(
         child: DataTable(
           headingRowColor: MaterialStateProperty.all(Colors.blueGrey.shade100),
+          border: TableBorder.all(color: Colors.grey.shade300),
+          columnSpacing: 20,
           columns: [
-            const DataColumn(label: Text('Conducteur')),
-            ...days.map((d) => DataColumn(label: Text(DateFormat('EEE dd/MM').format(d)))),
+            const DataColumn(label: Text('Conducteur', style: TextStyle(fontWeight: FontWeight.bold))),
+            ...days.map((d) => DataColumn(label: Text(DateFormat('EEE dd/MM').format(d), style: const TextStyle(fontWeight: FontWeight.bold)))),
           ],
           rows: fleetVM.drivers.map((driver) {
             return DataRow(cells: [
               DataCell(Text(driver.fullName ?? driver.username, style: const TextStyle(fontWeight: FontWeight.bold))),
               ...days.map((d) {
                 final activities = planningVM.getActivitiesForDriver(driver.username, d);
-                return DataCell(Text(activities.length.toString(), textAlign: TextAlign.center));
+                return DataCell(
+                  InkWell(
+                    onTap: () => _showDayEditDialog(context, driver, d, activities),
+                    child: Container(
+                      width: 100,
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      alignment: Alignment.center,
+                      child: activities.isEmpty 
+                        ? const Icon(Icons.add, size: 16, color: Colors.grey)
+                        : Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text('${activities.length} mission(s)', style: const TextStyle(fontSize: 11)),
+                              const Icon(Icons.edit, size: 12, color: Colors.blueGrey),
+                            ],
+                          ),
+                    ),
+                  ),
+                );
               }),
             ]);
           }).toList(),
@@ -410,4 +413,107 @@ class _WeeklyOverviewTable extends StatelessWidget {
       ),
     );
   }
+}
+
+void _showDayEditDialog(BuildContext context, dynamic driver, DateTime date, List<PlanningActivity> activities) {
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text('Planning: ${driver.fullName} (${DateFormat('dd/MM').format(date)})'),
+      content: SizedBox(
+        width: double.maxFinite,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (activities.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 20),
+                child: Text('Aucune mission prévue.'),
+              )
+            else
+              ...activities.map((a) => ListTile(
+                leading: const Icon(Icons.directions_bus, size: 18),
+                title: Text(a.title),
+                subtitle: Text('${DateFormat('HH:mm').format(a.startTime)} - ${DateFormat('HH:mm').format(a.endTime)}'),
+                trailing: IconButton(
+                  icon: const Icon(Icons.delete_outline, color: Colors.red),
+                  onPressed: () {
+                    Provider.of<PlanningViewModel>(context, listen: false).removeActivity(a.id);
+                    Navigator.pop(context);
+                  },
+                ),
+              )),
+            const Divider(),
+            ElevatedButton.icon(
+              onPressed: () {
+                Navigator.pop(context);
+                _showAddMissionDialog(context, date, driver);
+              },
+              icon: const Icon(Icons.add),
+              label: const Text('Ajouter une mission'),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Fermer')),
+      ],
+    ),
+  );
+}
+
+void _showAddMissionDialog(BuildContext context, DateTime date, dynamic selectedDriver) {
+  final titleController = TextEditingController();
+  final departureController = TextEditingController();
+  final arrivalController = TextEditingController();
+  final vehicleVM = Provider.of<VehicleViewModel>(context, listen: false);
+  Vehicle? selectedVehicle = vehicleVM.vehicles.first;
+
+  showDialog(
+    context: context,
+    builder: (context) => StatefulBuilder(
+      builder: (context, setDialogState) => AlertDialog(
+        title: Text('Programmer pour ${selectedDriver.fullName}'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(controller: titleController, decoration: const InputDecoration(labelText: 'Titre de la mission')),
+                TextField(controller: departureController, decoration: const InputDecoration(labelText: 'Départ')),
+                TextField(controller: arrivalController, decoration: const InputDecoration(labelText: 'Arrivée')),
+                const SizedBox(height: 10),
+                DropdownButtonFormField<Vehicle>(
+                  value: selectedVehicle,
+                  decoration: const InputDecoration(labelText: 'Véhicule assigné'),
+                  items: vehicleVM.vehicles.map((v) => DropdownMenuItem(value: v, child: Text(v.registration))).toList(),
+                  onChanged: (v) => setDialogState(() => selectedVehicle = v),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Annuler')),
+            ElevatedButton(
+              onPressed: () {
+                final activity = PlanningActivity(
+                  id: DateTime.now().millisecondsSinceEpoch.toString(),
+                  title: titleController.text,
+                  type: ActivityType.trip,
+                  startTime: DateTime(date.year, date.month, date.day, 8, 0),
+                  endTime: DateTime(date.year, date.month, date.day, 10, 0),
+                  departure: departureController.text,
+                  arrival: arrivalController.text,
+                  vehicle: selectedVehicle,
+                  driverId: selectedDriver.username,
+                );
+                Provider.of<PlanningViewModel>(context, listen: false).addActivity(activity);
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Mission ajoutée')));
+              },
+              child: const Text('Ajouter'),
+            ),
+          ],
+        ),
+      ),
+    );
 }
