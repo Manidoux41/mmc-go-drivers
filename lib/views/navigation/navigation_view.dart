@@ -10,6 +10,7 @@ import '../../viewmodels/login_viewmodel.dart';
 import '../login/login_view.dart';
 import '../dashboard/dashboard_view.dart';
 import '../subscription/paywall_view.dart';
+import '../about/about_view.dart';
 
 class NavigationView extends StatefulWidget {
   final PlanningActivity? activity;
@@ -114,6 +115,14 @@ class _NavigationViewState extends State<NavigationView> {
                 },
               ),
             ],
+            ListTile(
+              leading: const Icon(Icons.info_outline, color: Colors.grey),
+              title: const Text('À propos de MMC Go'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (context) => const AboutView()));
+              },
+            ),
             const AboutListTile(
               icon: Icon(Icons.info),
               applicationName: 'MMC Go Drivers',

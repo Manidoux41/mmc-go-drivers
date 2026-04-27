@@ -1,80 +1,68 @@
-# Guide de Publication - MMC Go
+# MMC Go Drivers 🚌🚕🚛
+### L'outil universel des professionnels du transport
 
-Ce guide détaille les étapes nécessaires pour compiler et publier l'application **MMC Go** sur Google Play Store (Android) et l'App Store (iOS).
-
-## 1. Pré-requis Communs
-- Avoir un compte développeur [Google Play Console](https://play.google.com/console) (25$ à vie).
-- Avoir un compte développeur [Apple Developer Program](https://developer.apple.com/) (99$/an).
-- Avoir généré les icônes finales via la commande :
-  ```bash
-  flutter pub run flutter_launcher_icons
-  ```
+MMC Go Drivers est une application complète conçue pour simplifier le quotidien des conducteurs (Bus, Taxi, PL) et des gestionnaires de flotte. Elle allie outils de navigation spécialisés, gestion de planning et conformité réglementaire.
 
 ---
 
-## 2. Publication Android (Google Play Store)
+## 🌟 Fonctionnalités Principales
 
-### Étape A : Générer la clé de signature (Keystore)
-Si vous n'en avez pas, générez une clé pour signer l'application :
-```bash
-keytool -genkey -v -keystore ~/upload-keystore.jks -keyalg RSA -keysize 2048 -validity 10000 -alias upload
-```
-*Note: Conservez ce fichier précieusement. S'il est perdu, vous ne pourrez plus mettre à jour l'application.*
+### Pour les Conducteurs
+- **Navigation Intelligente** : Calcul d'itinéraires prenant en compte le gabarit du véhicule (hauteur, PTAC).
+- **Enregistrement de Trajets** : Mémorisez vos lignes et circuits, incluant les arrêts (waypoints) et exportez-les au format KML/GPX.
+- **Planning Individuel** : Visualisez vos missions quotidiennes sous forme de blocs clairs et recevez des alertes RSE en temps réel.
+- **Billet Collectif (BC)** : Gestion spécifique des transports touristiques et scolaires avec guidage point par point.
+- **Portefeuille de Documents** : Accès rapide à vos permis, attestations et documents véhicules.
 
-### Étape B : Configurer Gradle
-Créez un fichier `android/key.properties` et ajoutez-y :
-```properties
-storePassword=<votre-mot-de-passe>
-keyPassword=<votre-mot-de-passe-clé>
-keyAlias=upload
-storeFile=/Users/<votre-nom>/upload-keystore.jks
-```
-
-### Étape C : Compiler le App Bundle (AAB)
-```bash
-flutter clean
-flutter build appbundle --release
-```
-Le fichier généré se trouve ici : `build/app/outputs/bundle/release/app-release.aab`.
-
-### Étape D : Mise en ligne
-1. Allez sur votre console Google Play.
-2. Créez une nouvelle "Release".
-3. Téléchargez le fichier `.aab`.
+### Pour les Entreprises (Forfait Diamant)
+- **Console d'Administration** : Un centre de pilotage complet pour gérer toute la société.
+- **Gestion d'Équipe** : Créez des comptes pour vos chauffeurs avec identifiants et mots de passe sécurisés.
+- **Gestion de Flotte** : Administrez votre parc de véhicules.
+- **Tableau de Bord Interactif** : Pilotez le planning de tous vos conducteurs sur une vue "Style Excel" (Jour/Semaine).
+- **Export PDF** : Générez des feuilles de route hebdomadaires pour l'ensemble de la flotte.
 
 ---
 
-## 3. Publication iOS (App Store)
+## 💶 Tarifs et Forfaits
 
-### Étape A : Configuration Xcode
-1. Ouvrez le projet dans Xcode : `open ios/Runner.xcworkspace`.
-2. Allez dans l'onglet **Signing & Capabilities**.
-3. Sélectionnez votre **Team** Apple Developer.
-4. Vérifiez que le **Bundle Identifier** est unique (ex: `com.mmc.godrivers`).
-
-### Étape B : Archivage
-1. Sélectionnez **Any iOS Device (arm64)** comme cible de build.
-2. Dans le menu du haut, faites : **Product > Archive**.
-3. Une fois terminé, la fenêtre "Organizer" s'ouvre.
-
-### Étape C : Upload
-1. Cliquez sur **Distribute App**.
-2. Choisissez **App Store Connect** puis **Upload**.
-3. Suivez les instructions jusqu'à la fin.
+| Fonctionnalités | Gratuit | Expert | Professionnel | Diamant (Entreprise) |
+| :--- | :---: | :---: | :---: | :---: |
+| **Prix / mois** | **0.00 €** | **2.99 €** | **15.99 €** | **399.00 €** |
+| Navigation Standard | ✅ | ✅ | ✅ | ✅ |
+| Enregistrement Trajets | 1 seul | Illimité | Illimité | Illimité |
+| Navigation Gabarit (PL) | ❌ | ✅ | ✅ | ✅ |
+| Export KML / GPX | ❌ | ✅ | ✅ | ✅ |
+| Planning | ❌ | ❌ | ✅ | ✅ |
+| Gestion Véhicules | ❌ | ❌ | ✅ | ✅ |
+| Documents & Contacts | ❌ | ❌ | ✅ | ✅ |
+| **Administration Flotte** | ❌ | ❌ | ❌ | ✅ |
+| **Comptes Chauffeurs** | ❌ | ❌ | ❌ | ✅ |
+| **Alertes RSE Avancées** | ❌ | ❌ | ❌ | ✅ |
 
 ---
 
-## 4. Gestion de la Base de Données (Post-Publication)
-
-L'application a été conçue pour être flexible. Vous n'avez pas besoin de recompiler l'application pour changer de serveur.
-
-1. Installez l'application sur un téléphone.
-2. Sur l'écran de connexion, cliquez sur l'icône **"Configuration DB"** (engrenage).
-3. Saisissez l'URL de votre base de données ou de votre API.
-4. Validez. L'application communiquera désormais avec cette adresse.
+## ⚖️ Conformité RSE
+L'application intègre un moteur de calcul respectant la **Règlementation Sociale Européenne**. Elle alerte automatiquement le conducteur et l'administrateur en cas de :
+- Dépassement de l'amplitude (12h).
+- Conduite continue supérieure à 4h30 sans pause.
+- Temps de conduite quotidien approchant les 9h.
 
 ---
 
-## 5. Maintenance
-- Pour changer la version : modifiez `version: 1.0.0+1` dans `pubspec.yaml`.
-- Le `+1` (build number) doit augmenter à chaque nouvelle soumission sur les stores.
+## 📱 À propos de l'application
+**Version** : 1.0.0  
+**Développeur** : MMC Go Développement  
+**Contact** : support@mmcgo-drivers.com  
+**Copyright** : © 2024 MMC Go. Tous droits réservés.
+
+L'application est développée avec **Flutter** et utilise le moteur cartographique **OpenStreetMap** pour une précision et une flexibilité maximale dans le monde entier.
+
+---
+
+## 🚀 Installation & Test
+1. Clonez le repository.
+2. Assurez-vous d'avoir Flutter installé (`flutter doctor`).
+3. Installez les dépendances : `flutter pub get`.
+4. Lancez sur iPhone (Physique ou Simulateur) : `flutter run`.
+
+*Note : Pour tester les fonctions d'administration, inscrivez-vous et choisissez le forfait Diamant lors de la simulation de paiement.*
