@@ -1,4 +1,4 @@
-package com.example.flutter01
+package com.manidev.mmcgodrivers
 
 import io.flutter.embedding.android.FlutterActivity
 

@@ -11,7 +11,8 @@ class VehicleView extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Ma Flotte d\'Autocars'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        backgroundColor: Theme.of(context).primaryColor,
+        foregroundColor: Colors.white,
       ),
       body: Consumer<VehicleViewModel>(
         builder: (context, viewModel, child) {
@@ -36,12 +37,12 @@ class VehicleView extends StatelessWidget {
       child: Column(
         children: [
           ListTile(
-            leading: const CircleAvatar(
-              backgroundColor: Colors.deepPurple,
-              child: Icon(Icons.directions_bus, color: Colors.white),
+            leading: CircleAvatar(
+              backgroundColor: Theme.of(context).primaryColor,
+              child: const Icon(Icons.directions_bus, color: Colors.white),
             ),
             title: Text('${vehicle.brand} ${vehicle.model}', style: const TextStyle(fontWeight: FontWeight.bold)),
-            subtitle: Text(vehicle.registration, style: const TextStyle(color: Colors.deepPurple, fontWeight: FontWeight.w600)),
+            subtitle: Text(vehicle.registration, style: TextStyle(color: Theme.of(context).primaryColor, fontWeight: FontWeight.w600)),
             trailing: Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(

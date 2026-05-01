@@ -23,9 +23,11 @@ class DashboardView extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
+        leading: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Image.asset('assets/icon/logoMMCGo.png'),
+        ),
         title: const Text('MMC Go - Tableau de bord'),
-        backgroundColor: Colors.green,
-        foregroundColor: Colors.white,
         actions: [
           _buildTierBadge(context, tier),
           IconButton(
@@ -70,7 +72,7 @@ class DashboardView extends StatelessWidget {
             context,
             'Véhicule',
             Icons.directions_bus,
-            Colors.green,
+            Theme.of(context).primaryColor,
             isLocked: tier.index < SubscriptionTier.professional.index,
             onTap: () => Navigator.push(
               context,

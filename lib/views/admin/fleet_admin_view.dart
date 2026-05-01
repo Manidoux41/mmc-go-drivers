@@ -260,26 +260,22 @@ class _PlanningOverviewRootState extends State<_PlanningOverviewRoot> {
   }
 }
 
-class _ManagePlanningTab extends StatefulWidget {
+class _ManagePlanningTab extends StatelessWidget {
   final DateTime selectedDate;
   final ValueChanged<DateTime> onDateChanged;
   const _ManagePlanningTab({required this.selectedDate, required this.onDateChanged});
 
   @override
-  State<_ManagePlanningTab> createState() => _ManagePlanningTabState();
-}
-
-class _ManagePlanningTabState extends State<_ManagePlanningTab> {
-  @override
   Widget build(BuildContext context) {
+    final drivers = Provider.of<FleetAdminViewModel>(context).drivers;
     return Scaffold(
       body: Column(
         children: [
           CalendarDatePicker(
-            initialDate: widget.selectedDate,
+            initialDate: selectedDate,
             firstDate: DateTime(2020),
             lastDate: DateTime(2030),
-            onDateChanged: widget.onDateChanged,
+            onDateChanged: onDateChanged,
           ),
           const Divider(),
           const Padding(
@@ -293,7 +289,11 @@ class _ManagePlanningTabState extends State<_ManagePlanningTab> {
                   leading: const Icon(Icons.assignment, color: Colors.blue),
                   title: const Text('Nouvelle Mission'),
                   subtitle: const Text('Cliquez sur + pour programmer une mission'),
-                  onTap: () => _showAddMissionDialog(context, widget.selectedDate, Provider.of<FleetAdminViewModel>(context, listen: false).drivers.first),
+                  onTap: () {
+                    if (drivers.isNotEmpty) {
+                      _showAddMissionDialog(context, selectedDate, drivers.first);
+                    }
+                  },
                 ),
               ],
             ),
@@ -301,7 +301,11 @@ class _ManagePlanningTabState extends State<_ManagePlanningTab> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => _showAddMissionDialog(context, widget.selectedDate, Provider.of<FleetAdminViewModel>(context, listen: false).drivers.first),
+        onPressed: () {
+          if (drivers.isNotEmpty) {
+            _showAddMissionDialog(context, selectedDate, drivers.first);
+          }
+        },
         backgroundColor: Colors.blueGrey,
         child: const Icon(Icons.edit_calendar, color: Colors.white),
       ),
@@ -467,7 +471,9 @@ void _showAddMissionDialog(BuildContext context, DateTime date, dynamic selected
   final departureController = TextEditingController();
   final arrivalController = TextEditingController();
   final vehicleVM = Provider.of<VehicleViewModel>(context, listen: false);
-  Vehicle? selectedVehicle = vehicleVM.vehicles.first;
+  final fleetVM = Provider.of<FleetAdminViewModel>(context, listen: false);
+  
+  Vehicle? selectedVehicle = vehicleVM.vehicles.isNotEmpty ? vehicleVM.vehicles.first : null;
 
   showDialog(
     context: context,
@@ -477,43 +483,44 @@ void _showAddMissionDialog(BuildContext context, DateTime date, dynamic selected
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(controller: titleController, decoration: const InputDecoration(labelText: 'Titre de la mission')),
-                TextField(controller: departureController, decoration: const InputDecoration(labelText: 'Départ')),
-                TextField(controller: arrivalController, decoration: const InputDecoration(labelText: 'Arrivée')),
-                const SizedBox(height: 10),
+            children: [
+              TextField(controller: titleController, decoration: const InputDecoration(labelText: 'Titre de la mission')),
+              TextField(controller: departureController, decoration: const InputDecoration(labelText: 'Départ')),
+              TextField(controller: arrivalController, decoration: const InputDecoration(labelText: 'Arrivée')),
+              const SizedBox(height: 10),
+              if (vehicleVM.vehicles.isNotEmpty)
                 DropdownButtonFormField<Vehicle>(
                   value: selectedVehicle,
                   decoration: const InputDecoration(labelText: 'Véhicule assigné'),
                   items: vehicleVM.vehicles.map((v) => DropdownMenuItem(value: v, child: Text(v.registration))).toList(),
                   onChanged: (v) => setDialogState(() => selectedVehicle = v),
                 ),
-              ],
-            ),
+            ],
           ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Annuler')),
-            ElevatedButton(
-              onPressed: () {
-                final activity = PlanningActivity(
-                  id: DateTime.now().millisecondsSinceEpoch.toString(),
-                  title: titleController.text,
-                  type: ActivityType.trip,
-                  startTime: DateTime(date.year, date.month, date.day, 8, 0),
-                  endTime: DateTime(date.year, date.month, date.day, 10, 0),
-                  departure: departureController.text,
-                  arrival: arrivalController.text,
-                  vehicle: selectedVehicle,
-                  driverId: selectedDriver.username,
-                );
-                Provider.of<PlanningViewModel>(context, listen: false).addActivity(activity);
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Mission ajoutée')));
-              },
-              child: const Text('Ajouter'),
-            ),
-          ],
         ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Annuler')),
+          ElevatedButton(
+            onPressed: () {
+              final activity = PlanningActivity(
+                id: DateTime.now().millisecondsSinceEpoch.toString(),
+                title: titleController.text,
+                type: ActivityType.trip,
+                startTime: DateTime(date.year, date.month, date.day, 8, 0),
+                endTime: DateTime(date.year, date.month, date.day, 10, 0),
+                departure: departureController.text,
+                arrival: arrivalController.text,
+                vehicle: selectedVehicle,
+                driverId: selectedDriver.username,
+              );
+              Provider.of<PlanningViewModel>(context, listen: false).addActivity(activity);
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Mission ajoutée')));
+            },
+            child: const Text('Ajouter'),
+          ),
+        ],
       ),
-    );
+    ),
+  );
 }

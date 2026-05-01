@@ -14,7 +14,8 @@ class PlanningView extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Mon Planning'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        backgroundColor: Theme.of(context).primaryColor,
+        foregroundColor: Colors.white,
         actions: [
           IconButton(
             icon: const Icon(Icons.picture_as_pdf),
@@ -89,7 +90,7 @@ class PlanningView extends StatelessWidget {
 
   Widget _buildActivityBlock(BuildContext context, PlanningActivity activity) {
     final timeFormat = DateFormat('HH:mm');
-    final accentColor = _getAccentColor(activity.type);
+    final accentColor = _getAccentColor(context, activity.type);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -127,7 +128,14 @@ class PlanningView extends StatelessWidget {
                   children: [
                     const Icon(Icons.location_on, size: 14, color: Colors.grey),
                     const SizedBox(width: 4),
-                    Text('${activity.departure} ➔ ${activity.arrival}', style: const TextStyle(color: Colors.grey)),
+                    Expanded(
+                      child: Text(
+                        '${activity.departure} ➔ ${activity.arrival}',
+                        style: const TextStyle(color: Colors.grey, fontSize: 13),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -246,11 +254,11 @@ class PlanningView extends StatelessWidget {
     );
   }
 
-  Color _getAccentColor(ActivityType type) {
+  Color _getAccentColor(BuildContext context, ActivityType type) {
     switch (type) {
       case ActivityType.ps: return Colors.blue;
       case ActivityType.fs: return Colors.red;
-      case ActivityType.trip: return Colors.green;
+      case ActivityType.trip: return Theme.of(context).primaryColor;
       case ActivityType.nettoyage: return Colors.orange;
       case ActivityType.hlp: return Colors.blueGrey;
       case ActivityType.bc: return Colors.purple;

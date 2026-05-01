@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/subscription_tier.dart';
 import '../models/user.dart';
+import '../services/stripe_service.dart';
 
 class SubscriptionViewModel extends ChangeNotifier {
   User? _currentUser;
@@ -14,23 +15,30 @@ class SubscriptionViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<bool> subscribe(SubscriptionTier tier, String cardNumber, String expiry, String cvc) async {
+  Future<bool> subscribe(SubscriptionTier tier, {bool useStripe = false}) async {
     _isProcessing = true;
     notifyListeners();
 
-    // Simulation d'un délai de paiement Stripe
-    await Future.delayed(const Duration(seconds: 2));
+    bool success = false;
 
-    // Simulation de succès (on pourrait ajouter des validations ici)
-    if (_currentUser != null) {
+    if (useStripe) {
+      // Tentative de paiement réel via Stripe
+      success = await StripeService.makePayment(
+        amount: tier.price.toString(),
+        currency: 'eur',
+      );
+    } else {
+      // Simulation d'un délai de paiement pour la carte fictive
+      await Future.delayed(const Duration(seconds: 2));
+      success = true; // La carte fictive accepte toujours
+    }
+
+    if (success && _currentUser != null) {
       _currentUser!.tier = tier;
-      _isProcessing = false;
-      notifyListeners();
-      return true;
     }
 
     _isProcessing = false;
     notifyListeners();
-    return false;
+    return success;
   }
 }

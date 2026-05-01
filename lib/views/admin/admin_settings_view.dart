@@ -45,7 +45,7 @@ class _AdminSettingsViewState extends State<AdminSettingsView> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Configuration Administrateur'),
-        backgroundColor: Colors.green.shade700,
+        backgroundColor: Theme.of(context).primaryColor,
         foregroundColor: Colors.white,
       ),
       body: Padding(
@@ -69,7 +69,7 @@ class _AdminSettingsViewState extends State<AdminSettingsView> {
                 labelText: 'URL de connexion',
                 hintText: 'https://api.votre-serveur.com',
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                prefixIcon: const Icon(Icons.link, color: Colors.green),
+                prefixIcon: Icon(Icons.link, color: Theme.of(context).primaryColor),
               ),
             ),
             const SizedBox(height: 30),
@@ -80,7 +80,7 @@ class _AdminSettingsViewState extends State<AdminSettingsView> {
                     icon: const Icon(Icons.save),
                     label: const Text('ENREGISTRER LA CONFIGURATION'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
+                      backgroundColor: Theme.of(context).primaryColor,
                       foregroundColor: Colors.white,
                       minimumSize: const Size.fromHeight(55),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

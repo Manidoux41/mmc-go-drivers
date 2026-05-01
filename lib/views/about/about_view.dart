@@ -9,8 +9,6 @@ class AboutView extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('À propos de MMC Go'),
-        backgroundColor: Colors.green,
-        foregroundColor: Colors.white,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
@@ -20,7 +18,7 @@ class AboutView extends StatelessWidget {
             Center(
               child: Column(
                 children: [
-                  const Icon(Icons.directions_bus, size: 80, color: Colors.green),
+                  Image.asset('assets/icon/logoMMCGo.png', height: 100),
                   const SizedBox(height: 10),
                   const Text(
                     'MMC Go Drivers',
@@ -34,24 +32,24 @@ class AboutView extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 30),
-            const Text(
+            Text(
               'Notre Mission',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.green),
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Theme.of(context).primaryColor),
             ),
             const SizedBox(height: 10),
             const Text(
               'MMC Go Drivers est né de la volonté de fournir aux transporteurs routiers (voyageurs et marchandises) un outil moderne, capable de gérer à la fois la navigation technique, le planning et la sécurité réglementaire.',
             ),
             const SizedBox(height: 30),
-            const Text(
+            Text(
               'Nos Tarifs',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.green),
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Theme.of(context).primaryColor),
             ),
             const SizedBox(height: 15),
-            _buildPriceItem(SubscriptionTier.free, "Idéal pour découvrir"),
-            _buildPriceItem(SubscriptionTier.expert, "Pour les conducteurs indépendants"),
-            _buildPriceItem(SubscriptionTier.professional, "L'outil complet du quotidien"),
-            _buildPriceItem(SubscriptionTier.diamond, "La solution d'entreprise"),
+            _buildPriceItem(context, SubscriptionTier.free, "Idéal pour découvrir"),
+            _buildPriceItem(context, SubscriptionTier.expert, "Pour les conducteurs indépendants"),
+            _buildPriceItem(context, SubscriptionTier.professional, "L'outil complet du quotidien"),
+            _buildPriceItem(context, SubscriptionTier.diamond, "La solution d'entreprise"),
             const SizedBox(height: 30),
             const Divider(),
             const SizedBox(height: 20),
@@ -69,7 +67,7 @@ class AboutView extends StatelessWidget {
     );
   }
 
-  Widget _buildPriceItem(SubscriptionTier tier, String sub) {
+  Widget _buildPriceItem(BuildContext context, SubscriptionTier tier, String sub) {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(12),
@@ -90,7 +88,7 @@ class AboutView extends StatelessWidget {
           ),
           Text(
             '${tier.price} €/mois',
-            style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green, fontSize: 16),
+            style: TextStyle(fontWeight: FontWeight.bold, color: Theme.of(context).primaryColor, fontSize: 16),
           ),
         ],
       ),

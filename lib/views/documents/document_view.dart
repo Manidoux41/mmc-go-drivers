@@ -14,7 +14,8 @@ class DocumentView extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Mes Documents'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        backgroundColor: Theme.of(context).primaryColor,
+        foregroundColor: Colors.white,
       ),
       body: Consumer<DocumentViewModel>(
         builder: (context, viewModel, child) {
@@ -45,7 +46,7 @@ class DocumentView extends StatelessWidget {
       child: ExpansionTile(
         leading: Icon(
           _getDocumentIcon(doc.type),
-          color: hasFile ? Colors.green : Colors.grey,
+          color: hasFile ? Theme.of(context).primaryColor : Colors.grey,
         ),
         title: Text(
           doc.title,

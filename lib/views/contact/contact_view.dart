@@ -60,7 +60,8 @@ class ContactView extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Contacts Utiles'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        backgroundColor: Theme.of(context).primaryColor,
+        foregroundColor: Colors.white,
       ),
       body: ListView.builder(
         padding: const EdgeInsets.all(16),
@@ -120,7 +121,7 @@ class ContactView extends StatelessWidget {
           ],
         ),
         trailing: IconButton(
-          icon: const Icon(Icons.phone, color: Colors.green),
+          icon: Icon(Icons.phone, color: Theme.of(context).primaryColor),
           onPressed: () => _makePhoneCall(contact.phoneNumber),
         ),
         onTap: () => _makePhoneCall(contact.phoneNumber),

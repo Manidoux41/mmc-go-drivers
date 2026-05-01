@@ -24,6 +24,12 @@ class NavigationView extends StatefulWidget {
 class _NavigationViewState extends State<NavigationView> {
   final MapController _mapController = MapController();
   final TextEditingController _nameController = TextEditingController();
+  
+  bool _showRoutePanel = false;
+  final List<TextEditingController> _stopControllers = [
+    TextEditingController(text: 'Ma position'),
+    TextEditingController(),
+  ];
 
   @override
   void initState() {
@@ -47,15 +53,13 @@ class _NavigationViewState extends State<NavigationView> {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.activity != null ? 'Itinéraire : ${widget.activity!.title}' : 'Navigation & Enregistrement'),
-        backgroundColor: Colors.green,
-        foregroundColor: Colors.white,
       ),
       drawer: Drawer(
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
             DrawerHeader(
-              decoration: const BoxDecoration(color: Colors.green),
+              decoration: BoxDecoration(color: Theme.of(context).primaryColor),
               margin: EdgeInsets.zero,
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
               child: SingleChildScrollView(
@@ -63,7 +67,17 @@ class _NavigationViewState extends State<NavigationView> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.account_circle, size: 45, color: Colors.white),
+                    Container(
+                      width: 60,
+                      height: 60,
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                      ),
+                      child: ClipOval(
+                        child: Image.asset('assets/icon/logoMMCGo.png'),
+                      ),
+                    ),
                     const SizedBox(height: 8),
                     Text(
                       user != null ? 'Bonjour, ${user.username}' : 'Compte MMC Go',
@@ -80,7 +94,7 @@ class _NavigationViewState extends State<NavigationView> {
             ),
             if (user == null)
               ListTile(
-                leading: const Icon(Icons.login, color: Colors.green),
+                leading: Icon(Icons.login, color: Theme.of(context).primaryColor),
                 title: const Text('Se connecter / S\'inscrire'),
                 onTap: () {
                   Navigator.pop(context);
@@ -137,24 +151,26 @@ class _NavigationViewState extends State<NavigationView> {
           final List<Marker> activityMarkers = widget.activity?.stops?.map((s) => Marker(
                 point: s.location,
                 width: 100,
-                height: 60,
+                height: 80,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     const Icon(Icons.location_on, color: Colors.blue, size: 30),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.9),
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(color: Colors.blue, width: 1),
-                      ),
-                      child: Text(
-                        s.name,
-                        style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold),
-                        textAlign: TextAlign.center,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
+                    Flexible(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.9),
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: Colors.blue, width: 1),
+                        ),
+                        child: Text(
+                          s.name,
+                          style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold),
+                          textAlign: TextAlign.center,
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                     )
                   ],
@@ -168,6 +184,15 @@ class _NavigationViewState extends State<NavigationView> {
                 options: MapOptions(
                   initialCenter: widget.activity?.stops?.first.location ?? viewModel.currentPosition ?? const LatLng(48.069, 1.325),
                   initialZoom: 13.0,
+                  onLongPress: (tapPosition, point) {
+                    if (widget.activity?.vehicle != null) {
+                      _showRouteConfirmation(context, viewModel, point, widget.activity!.vehicle!);
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Veuillez sélectionner une activité avec véhicule pour calculer un itinéraire PL.')),
+                      );
+                    }
+                  },
                 ),
                 children: [
                   TileLayer(
@@ -178,17 +203,24 @@ class _NavigationViewState extends State<NavigationView> {
                   ),
                   PolylineLayer(
                     polylines: [
-                      if (widget.activity?.stops != null)
+                      if (widget.activity?.stops != null && widget.activity!.stops!.isNotEmpty)
                         Polyline(
                           points: widget.activity!.stops!.map((s) => s.location).toList(),
                           strokeWidth: 5,
                           color: Colors.blue.withOpacity(0.7),
                         ),
-                      Polyline(
-                        points: viewModel.currentRoute,
-                        strokeWidth: 4,
-                        color: Colors.deepPurple,
-                      ),
+                      if (viewModel.recordedRoute.isNotEmpty)
+                        Polyline(
+                          points: viewModel.recordedRoute,
+                          strokeWidth: 4,
+                          color: Colors.deepPurple,
+                        ),
+                      if (viewModel.plannedRoute.isNotEmpty)
+                        Polyline(
+                          points: viewModel.plannedRoute,
+                          strokeWidth: 5,
+                          color: Colors.orange,
+                        ),
                     ],
                   ),
                   MarkerLayer(
@@ -211,6 +243,27 @@ class _NavigationViewState extends State<NavigationView> {
                   ),
                 ],
               ),
+              if (viewModel.isCalculating)
+                Container(
+                  color: Colors.black26,
+                  child: const Center(
+                    child: Card(
+                      child: Padding(
+                        padding: EdgeInsets.all(20.0),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            CircularProgressIndicator(),
+                            SizedBox(height: 16),
+                            Text('Calcul de l\'itinéraire PL optimisé...'),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              if (_showRoutePanel)
+                _buildRoutePanel(context, viewModel, widget.activity?.vehicle),
               // Affichage des contraintes véhicule
               if (widget.activity?.vehicle != null)
                 Positioned(
@@ -284,6 +337,118 @@ class _NavigationViewState extends State<NavigationView> {
             ],
           );
         },
+      ),
+      floatingActionButton: Column(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          FloatingActionButton(
+            heroTag: 'btn_route_panel',
+            onPressed: () => setState(() => _showRoutePanel = !_showRoutePanel),
+            backgroundColor: _showRoutePanel ? Colors.orange : Theme.of(context).primaryColor,
+            child: Icon(_showRoutePanel ? Icons.close : Icons.directions, color: Colors.white),
+          ),
+          const SizedBox(height: 80), // Laisser de la place pour les boutons d'enregistrement
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRoutePanel(BuildContext context, NavigationViewModel viewModel, Vehicle? vehicle) {
+    return Positioned(
+      top: 10,
+      left: 10,
+      right: 10,
+      child: Card(
+        elevation: 8,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Calcul d\'itinéraire multi-étapes PL', style: TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 10),
+              Flexible(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 250),
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: _stopControllers.length,
+                    itemBuilder: (context, index) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 8.0),
+                        child: Row(
+                          children: [
+                            Icon(index == 0 ? Icons.my_location : (index == _stopControllers.length - 1 ? Icons.flag : Icons.more_vert), 
+                                 size: 18, color: Colors.blueGrey),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: TextField(
+                                controller: _stopControllers[index],
+                                decoration: InputDecoration(
+                                  hintText: index == 0 ? 'Point de départ' : (index == _stopControllers.length - 1 ? 'Destination' : 'Étape'),
+                                  isDense: true,
+                                  border: const OutlineInputBorder(),
+                                ),
+                              ),
+                            ),
+                            if (_stopControllers.length > 2)
+                              IconButton(
+                                icon: const Icon(Icons.remove_circle_outline, color: Colors.red, size: 20),
+                                onPressed: () => setState(() => _stopControllers.removeAt(index)),
+                              ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  TextButton.icon(
+                    onPressed: () => setState(() => _stopControllers.insert(_stopControllers.length - 1, TextEditingController())),
+                    icon: const Icon(Icons.add_circle_outline),
+                    label: const Text('Ajouter une étape'),
+                  ),
+                  if (viewModel.plannedRoute.isNotEmpty)
+                    IconButton(
+                      icon: const Icon(Icons.download, color: Colors.blue),
+                      tooltip: 'Exporter KML',
+                      onPressed: () => viewModel.exportToKML(),
+                    ),
+                ],
+              ),
+              const Divider(),
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: vehicle == null ? null : () {
+                        List<String> addresses = _stopControllers.map((c) => c.text).toList();
+                        // Remplacer 'Ma position' par les coordonnées réelles si besoin dans le VM
+                        viewModel.calculateMultiStopRoute(addresses, vehicle);
+                      },
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.orange, foregroundColor: Colors.white),
+                      child: const Text('CALCULER L\'ITINÉRAIRE'),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  IconButton(
+                    icon: const Icon(Icons.layers_clear, color: Colors.grey),
+                    onPressed: () {
+                      viewModel.clearPlannedRoute();
+                      setState(() => _showRoutePanel = false);
+                    },
+                  ),
+                ],
+              ),
+              if (vehicle == null)
+                const Text('⚠️ Sélectionnez une mission pour identifier le véhicule', style: TextStyle(color: Colors.red, fontSize: 10)),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -370,6 +535,26 @@ class _NavigationViewState extends State<NavigationView> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _showRouteConfirmation(BuildContext context, NavigationViewModel viewModel, LatLng destination, Vehicle vehicle) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Calculer l\'itinéraire PL ?'),
+        content: Text('Voulez-vous calculer un itinéraire optimisé pour votre véhicule (${vehicle.registration}) vers ce point ?\n\nDimensions: ${vehicle.dimensions}\nPoids: ${vehicle.ptac}t'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Annuler')),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              viewModel.calculateTruckRoute(destination, vehicle);
+            },
+            child: const Text('Calculer'),
+          ),
+        ],
       ),
     );
   }

@@ -25,14 +25,12 @@ class _RegisterViewState extends State<RegisterView> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Créer un compte'),
-        backgroundColor: Colors.green,
-        foregroundColor: Colors.white,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(30.0),
         child: Column(
           children: [
-            const Icon(Icons.person_add, size: 80, color: Colors.green),
+            Image.asset('assets/icon/logoMMCGo.png', height: 100),
             const SizedBox(height: 20),
             const Text(
               'Rejoignez MMC Go Drivers',
@@ -44,7 +42,7 @@ class _RegisterViewState extends State<RegisterView> {
               decoration: InputDecoration(
                 labelText: 'Nom complet',
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                prefixIcon: const Icon(Icons.badge, color: Colors.green),
+                prefixIcon: Icon(Icons.badge, color: Theme.of(context).primaryColor),
               ),
             ),
             const SizedBox(height: 20),
@@ -53,7 +51,7 @@ class _RegisterViewState extends State<RegisterView> {
               decoration: InputDecoration(
                 labelText: 'Identifiant / Email',
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                prefixIcon: const Icon(Icons.email, color: Colors.green),
+                prefixIcon: Icon(Icons.email, color: Theme.of(context).primaryColor),
               ),
             ),
             const SizedBox(height: 20),
@@ -63,7 +61,7 @@ class _RegisterViewState extends State<RegisterView> {
               decoration: InputDecoration(
                 labelText: 'Mot de passe',
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                prefixIcon: const Icon(Icons.lock, color: Colors.green),
+                prefixIcon: Icon(Icons.lock, color: Theme.of(context).primaryColor),
               ),
             ),
             const SizedBox(height: 20),
@@ -73,7 +71,7 @@ class _RegisterViewState extends State<RegisterView> {
               decoration: InputDecoration(
                 labelText: 'Confirmer le mot de passe',
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                prefixIcon: const Icon(Icons.lock_clock, color: Colors.green),
+                prefixIcon: Icon(Icons.lock_clock, color: Theme.of(context).primaryColor),
               ),
             ),
             const SizedBox(height: 40),
@@ -110,7 +108,7 @@ class _RegisterViewState extends State<RegisterView> {
                       }
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
+                      backgroundColor: Theme.of(context).primaryColor,
                       foregroundColor: Colors.white,
                       minimumSize: const Size.fromHeight(55),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

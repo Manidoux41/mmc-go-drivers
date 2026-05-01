@@ -26,14 +26,13 @@ class LoginView extends StatelessWidget {
               return Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Emplacement pour l'icône MMC Go Drivers
+                  // Logo MMC Go Drivers
                   Container(
                     width: 150,
                     height: 150,
                     decoration: BoxDecoration(
-                      color: Colors.green.shade50,
+                      color: Colors.white,
                       shape: BoxShape.circle,
-                      border: Border.all(color: Colors.green.shade200, width: 2),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withOpacity(0.1),
@@ -42,21 +41,11 @@ class LoginView extends StatelessWidget {
                         ),
                       ],
                     ),
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        Icon(Icons.directions_bus, size: 60, color: Colors.green.shade800),
-                        Positioned(
-                          right: 35,
-                          bottom: 35,
-                          child: Icon(Icons.local_taxi, size: 30, color: Colors.green.shade600),
-                        ),
-                        Positioned(
-                          left: 35,
-                          bottom: 35,
-                          child: Icon(Icons.local_shipping, size: 30, color: Colors.green.shade600),
-                        ),
-                      ],
+                    child: ClipOval(
+                      child: Image.asset(
+                        'assets/icon/logoMMCGo.png',
+                        fit: BoxFit.contain,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 20),
@@ -65,7 +54,7 @@ class LoginView extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
-                      color: Colors.green.shade900,
+                      color: Theme.of(context).primaryColor,
                       letterSpacing: 1.2,
                     ),
                   ),
@@ -89,10 +78,10 @@ class LoginView extends StatelessWidget {
                     decoration: InputDecoration(
                       labelText: 'Identifiant',
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                      prefixIcon: const Icon(Icons.person, color: Colors.green),
+                      prefixIcon: Icon(Icons.person, color: Theme.of(context).primaryColor),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: Colors.green, width: 2),
+                        borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 2),
                       ),
                     ),
                   ),
@@ -103,16 +92,16 @@ class LoginView extends StatelessWidget {
                     decoration: InputDecoration(
                       labelText: 'Mot de passe',
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                      prefixIcon: const Icon(Icons.lock, color: Colors.green),
+                      prefixIcon: Icon(Icons.lock, color: Theme.of(context).primaryColor),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: Colors.green, width: 2),
+                        borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 2),
                       ),
                     ),
                   ),
                   const SizedBox(height: 40),
                   viewModel.isLoading
-                      ? const CircularProgressIndicator(color: Colors.green)
+                      ? CircularProgressIndicator(color: Theme.of(context).primaryColor)
                       : ElevatedButton(
                           onPressed: () async {
                             final fleetVM = Provider.of<FleetAdminViewModel>(context, listen: false);
@@ -151,7 +140,7 @@ class LoginView extends StatelessWidget {
                             }
                           },
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green,
+                            backgroundColor: Theme.of(context).primaryColor,
                             foregroundColor: Colors.white,
                             minimumSize: const Size.fromHeight(55),
                             shape: RoundedRectangleBorder(
@@ -176,9 +165,9 @@ class LoginView extends StatelessWidget {
                             MaterialPageRoute(builder: (context) => const RegisterView()),
                           );
                         },
-                        child: const Text(
+                        child: Text(
                           'S\'inscrire',
-                          style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
+                          style: TextStyle(color: Theme.of(context).primaryColor, fontWeight: FontWeight.bold),
                         ),
                       ),
                     ],

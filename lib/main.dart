@@ -8,6 +8,7 @@ import 'viewmodels/vehicle_viewmodel.dart';
 import 'viewmodels/document_viewmodel.dart';
 import 'viewmodels/subscription_viewmodel.dart';
 import 'viewmodels/fleet_admin_viewmodel.dart';
+import 'services/stripe_service.dart';
 import 'views/login/login_view.dart';
 import 'views/navigation/navigation_view.dart';
 
@@ -15,6 +16,13 @@ void main() async {
   // Nécessaire pour initialiser le formatage des dates en français
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('fr_FR', null);
+  
+  // Initialisation de Stripe (pourrait échouer si pas de clés, donc on catch)
+  try {
+    await StripeService.init();
+  } catch (e) {
+    debugPrint('Stripe non initialisé : ${e.toString()}');
+  }
 
   final vehicleVM = VehicleViewModel();
   
@@ -43,12 +51,24 @@ class MyApp extends StatelessWidget {
       title: 'MMC Go Drivers',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.green,
-          primary: Colors.green,
-          secondary: Colors.lightGreen,
-        ),
         useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF00A859), // Vert MMC Go
+          primary: const Color(0xFF00A859),
+          secondary: const Color(0xFF1B5E20),
+          tertiary: const Color(0xFFFFD600), // Accentuation possible (Jaune "Go")
+        ),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Color(0xFF00A859),
+          foregroundColor: Colors.white,
+          elevation: 0,
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF00A859),
+            foregroundColor: Colors.white,
+          ),
+        ),
       ),
       home: NavigationView(),
     );

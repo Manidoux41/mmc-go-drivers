@@ -12,8 +12,6 @@ class PaywallView extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Choisir mon abonnement'),
-        backgroundColor: Colors.green,
-        foregroundColor: Colors.white,
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -36,7 +34,7 @@ class PaywallView extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 16),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(15),
-        side: isCurrent ? const BorderSide(color: Colors.green, width: 2) : BorderSide.none,
+        side: isCurrent ? BorderSide(color: Theme.of(context).primaryColor, width: 2) : BorderSide.none,
       ),
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -55,7 +53,7 @@ class PaywallView extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w900,
-                    color: Colors.green.shade700,
+                    color: Theme.of(context).primaryColor,
                   ),
                 ),
               ],
@@ -67,15 +65,15 @@ class PaywallView extends StatelessWidget {
             ),
             const SizedBox(height: 20),
             if (isCurrent)
-              const Center(
+              Center(
                 child: Text('ABONNEMENT ACTUEL',
-                    style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+                    style: TextStyle(color: Theme.of(context).primaryColor, fontWeight: FontWeight.bold)),
               )
             else
               ElevatedButton(
                 onPressed: () => _showPaymentSheet(context, tier),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: tier == SubscriptionTier.diamond ? Colors.orange : Colors.green,
+                  backgroundColor: tier == SubscriptionTier.diamond ? Colors.orange : Theme.of(context).primaryColor,
                   foregroundColor: Colors.white,
                   minimumSize: const Size.fromHeight(50),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -128,6 +126,7 @@ class _PaymentSimulationFormState extends State<_PaymentSimulationForm> {
   final _cardNumberController = TextEditingController(text: '4242 4242 4242 4242');
   final _expiryController = TextEditingController(text: '12/26');
   final _cvcController = TextEditingController(text: '123');
+  bool _useRealStripe = false;
 
   @override
   Widget build(BuildContext context) {
@@ -138,35 +137,49 @@ class _PaymentSimulationFormState extends State<_PaymentSimulationForm> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Paiement via Stripe (Simulation)',
+          'Finaliser l\'abonnement',
           style: Theme.of(context).textTheme.headlineSmall,
         ),
         const SizedBox(height: 10),
         Text('Abonnement : ${widget.tier.name} - ${widget.tier.price}€/mois'),
-        const SizedBox(height: 20),
-        TextField(
-          controller: _cardNumberController,
-          decoration: const InputDecoration(labelText: 'Numéro de carte', prefixIcon: Icon(Icons.credit_card)),
-          keyboardType: TextInputType.number,
+        const Divider(height: 30),
+        
+        // Sélecteur de mode de paiement
+        SwitchListTile(
+          title: const Text('Utiliser Stripe (Fenêtre native)'),
+          subtitle: const Text('Nécessite des clés API valides'),
+          value: _useRealStripe,
+          onChanged: (val) => setState(() => _useRealStripe = val),
         ),
-        Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: _expiryController,
-                decoration: const InputDecoration(labelText: 'Date d\'expiration', hintText: 'MM/YY'),
+
+        if (!_useRealStripe) ...[
+          const Text('Paiement par Carte Fictive (Mode Test)', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blueGrey)),
+          const SizedBox(height: 10),
+          TextField(
+            controller: _cardNumberController,
+            decoration: const InputDecoration(labelText: 'Numéro de carte', prefixIcon: Icon(Icons.credit_card)),
+            keyboardType: TextInputType.number,
+          ),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _expiryController,
+                  decoration: const InputDecoration(labelText: 'Date d\'expiration', hintText: 'MM/YY'),
+                ),
               ),
-            ),
-            const SizedBox(width: 20),
-            Expanded(
-              child: TextField(
-                controller: _cvcController,
-                decoration: const InputDecoration(labelText: 'CVC'),
-                keyboardType: TextInputType.number,
+              const SizedBox(width: 20),
+              Expanded(
+                child: TextField(
+                  controller: _cvcController,
+                  decoration: const InputDecoration(labelText: 'CVC'),
+                  keyboardType: TextInputType.number,
+                ),
               ),
-            ),
-          ],
-        ),
+            ],
+          ),
+        ],
+        
         const SizedBox(height: 30),
         viewModel.isProcessing
             ? const Center(child: CircularProgressIndicator())
@@ -174,31 +187,29 @@ class _PaymentSimulationFormState extends State<_PaymentSimulationForm> {
                 onPressed: () async {
                   final success = await viewModel.subscribe(
                     widget.tier,
-                    _cardNumberController.text,
-                    _expiryController.text,
-                    _cvcController.text,
+                    useStripe: _useRealStripe,
                   );
                   if (success && mounted) {
-                    Navigator.pop(context); // Ferme le formulaire
-                    
-                    // On redirige vers le Dashboard pour donner accès aux fonctionnalités
                     Navigator.pushAndRemoveUntil(
                       context,
                       MaterialPageRoute(builder: (context) => const DashboardView()),
                       (route) => false,
                     );
-
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text('Félicitations ! Vous êtes maintenant ${widget.tier.name}')),
+                    );
+                  } else if (!success && mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Le paiement a échoué ou a été annulé.')),
                     );
                   }
                 },
                 style: ElevatedButton.styleFrom(
                   minimumSize: const Size.fromHeight(55),
-                  backgroundColor: Colors.blue.shade800,
+                  backgroundColor: _useRealStripe ? Colors.indigo : Colors.blue.shade800,
                   foregroundColor: Colors.white,
                 ),
-                child: const Text('CONFIRMER LE PAIEMENT'),
+                child: Text(_useRealStripe ? 'OUVRIR STRIPE' : 'CONFIRMER LE PAIEMENT FICTIF'),
               ),
         const SizedBox(height: 20),
       ],
