@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Demande de suppression de compte - MMC Go Drivers</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 40px auto; padding: 20px; background-color: #f4f7f6; }
+        .container { background: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); border-top: 5px solid #00A859; }
+        h1 { color: #00A859; font-size: 24px; margin-bottom: 10px; }
+        p { color: #666; margin-bottom: 25px; }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; font-weight: bold; margin-bottom: 8px; color: #444; }
+        input[type="text"], input[type="email"], textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; font-size: 16px; }
+        textarea { height: 100px; resize: vertical; }
+        button { background-color: #00A859; color: white; border: none; padding: 14px 20px; border-radius: 6px; cursor: pointer; font-size: 16px; font-weight: bold; width: 100%; transition: background 0.3s; }
+        button:hover { background-color: #008f4a; }
+        .footer { text-align: center; margin-top: 30px; font-size: 12px; color: #999; }
+        .warning { background-color: #fff4e5; border-left: 4px solid #ffa117; padding: 15px; margin-bottom: 25px; font-size: 14px; color: #664d03; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Suppression de compte</h1>
+    <p>Conformément au RGPD et aux règles de Google Play, vous pouvez demander la suppression de votre compte MMC Go Drivers et de l'ensemble de vos données associées.</p>
+
+    <div class="warning">
+        <strong>Attention :</strong> Cette action est irréversible. Toutes vos données de navigation, trajets enregistrés et documents seront définitivement supprimés.
+    </div>
+
+    <form action="mailto:support@mmcgo-drivers.com" method="post" enctype="text/plain">
+        <div class="form-group">
+            <label for="name">Nom complet :</label>
+            <input type="text" id="name" name="Nom" required placeholder="Votre nom tel qu'il apparaît dans l'app">
+        </div>
+
+        <div class="form-group">
+            <label for="id">Identifiant de connexion :</label>
+            <input type="text" id="id" name="Identifiant" required placeholder="Votre identifiant / email">
+        </div>
+
+        <div class="form-group">
+            <label for="reason">Raison de la suppression (Optionnel) :</label>
+            <textarea id="reason" name="Raison" placeholder="Dites-nous pourquoi vous nous quittez pour nous aider à nous améliorer..."></textarea>
+        </div>
+
+        <button type="submit">Envoyer la demande de suppression</button>
+    </form>
+</div>
+
+<div class="footer">
+    © 2024 MMC Go Drivers - <a href="PRIVACY_POLICY.md" style="color: #999;">Politique de confidentialité</a>
+</div>
+
+</body>
+</html>
