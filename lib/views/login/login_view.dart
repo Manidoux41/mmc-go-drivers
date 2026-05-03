@@ -4,6 +4,7 @@ import '../../viewmodels/login_viewmodel.dart';
 import '../../viewmodels/subscription_viewmodel.dart';
 import '../../viewmodels/planning_viewmodel.dart';
 import '../../viewmodels/fleet_admin_viewmodel.dart';
+import '../../viewmodels/vehicle_viewmodel.dart';
 import '../../models/subscription_tier.dart';
 import '../../models/user.dart';
 import '../dashboard/dashboard_view.dart';
@@ -104,17 +105,7 @@ class LoginView extends StatelessWidget {
                       ? CircularProgressIndicator(color: Theme.of(context).primaryColor)
                       : ElevatedButton(
                           onPressed: () async {
-                            final fleetVM = Provider.of<FleetAdminViewModel>(context, listen: false);
-                            final username = viewModel.usernameController.text;
-                            final password = viewModel.passwordController.text;
-
-                            // Vérification si c'est un chauffeur créé par l'admin
-                            User? targetUser;
-                            if (fleetVM.validateCredentials(username, password)) {
-                              targetUser = fleetVM.getDriver(username);
-                            }
-
-                            final success = await viewModel.login(existingUser: targetUser);
+                            final success = await viewModel.login();
 
                             if (success && context.mounted) {
                               // Synchronisation du user avec le SubscriptionViewModel
@@ -123,7 +114,11 @@ class LoginView extends StatelessWidget {
 
                               // Synchronisation avec le PlanningViewModel pour le calendrier individuel
                               final planningVM = Provider.of<PlanningViewModel>(context, listen: false);
-                              planningVM.setCurrentDriver(viewModel.currentUser!.username);
+                              planningVM.setCurrentDriver(viewModel.currentUser!.id);
+
+                              // Chargement initial des véhicules
+                              final vehicleVM = Provider.of<VehicleViewModel>(context, listen: false);
+                              vehicleVM.fetchVehicles();
 
                               if (viewModel.currentUser!.tier == SubscriptionTier.free) {
                                 // Rediriger vers le Paywall si aucun forfait (free)

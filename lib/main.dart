@@ -9,6 +9,7 @@ import 'viewmodels/document_viewmodel.dart';
 import 'viewmodels/subscription_viewmodel.dart';
 import 'viewmodels/fleet_admin_viewmodel.dart';
 import 'services/stripe_service.dart';
+import 'services/supabase_service.dart';
 import 'views/login/login_view.dart';
 import 'views/navigation/navigation_view.dart';
 
@@ -17,6 +18,13 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('fr_FR', null);
   
+  // Initialisation de Supabase
+  try {
+    await SupabaseService.init();
+  } catch (e) {
+    debugPrint('Erreur Supabase : ${e.toString()}');
+  }
+
   // Initialisation de Stripe (pourrait échouer si pas de clés, donc on catch)
   try {
     await StripeService.init();

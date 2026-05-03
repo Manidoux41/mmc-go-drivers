@@ -4,9 +4,10 @@ import 'package:latlong2/latlong.dart';
 import 'package:flutter/foundation.dart';
 import '../models/vehicle.dart';
 
+import '../config/secrets.dart';
+
 class RoutingService {
-  /// REMPLACEZ CETTE CLÉ par votre propre clé gratuite obtenue sur https://openrouteservice.org/
-  static const String _apiKey = '5b3ce3597851110001cf624890656a877501463989069d5053702287'; 
+  static const String _apiKey = AppSecrets.orsApiKey;
   
   static Future<List<LatLng>> getHeavyVehicleRoute({
     required List<LatLng> points,

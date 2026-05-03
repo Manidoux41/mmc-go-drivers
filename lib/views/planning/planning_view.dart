@@ -6,8 +6,21 @@ import '../../models/planning_activity.dart';
 import '../../services/pdf_service.dart';
 import '../navigation/navigation_view.dart';
 
-class PlanningView extends StatelessWidget {
+class PlanningView extends StatefulWidget {
   const PlanningView({super.key});
+
+  @override
+  State<PlanningView> createState() => _PlanningViewState();
+}
+
+class _PlanningViewState extends State<PlanningView> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<PlanningViewModel>(context, listen: false).fetchActivities();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -34,6 +47,10 @@ class PlanningView extends StatelessWidget {
       ),
       body: Consumer<PlanningViewModel>(
         builder: (context, viewModel, child) {
+          if (viewModel.isLoading) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
           final rseWarnings = viewModel.checkRSE(viewModel.filteredActivities);
           return Column(
             children: [

@@ -490,7 +490,8 @@ class _NavigationViewState extends State<NavigationView> {
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Annuler')),
           TextButton(
             onPressed: () {
-              viewModel.stopRecording(_nameController.text);
+              final user = Provider.of<LoginViewModel>(context, listen: false).currentUser;
+              viewModel.stopRecording(_nameController.text, user?.id);
               _nameController.clear();
               Navigator.pop(context);
             },

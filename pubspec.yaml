@@ -49,6 +49,7 @@ dependencies:
   http: ^1.6.0
   flutter_stripe: ^12.6.0
   flutter_native_splash: ^2.4.7
+  supabase_flutter: ^2.12.4
 
 dev_dependencies:
   flutter_test:

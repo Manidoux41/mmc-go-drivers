@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/subscription_tier.dart';
 import '../../viewmodels/subscription_viewmodel.dart';
+import '../../viewmodels/login_viewmodel.dart';
+import '../../services/email_service.dart';
 import '../dashboard/dashboard_view.dart';
 
 class PaywallView extends StatelessWidget {
@@ -71,14 +73,14 @@ class PaywallView extends StatelessWidget {
               )
             else
               ElevatedButton(
-                onPressed: () => _showPaymentSheet(context, tier),
+                onPressed: () => _showSubscriptionProcess(context, tier),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: tier == SubscriptionTier.diamond ? Colors.orange : Theme.of(context).primaryColor,
                   foregroundColor: Colors.white,
                   minimumSize: const Size.fromHeight(50),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
-                child: Text(tier == SubscriptionTier.free ? 'RESTER ICI' : 'S\'ABONNER'),
+                child: Text(tier == SubscriptionTier.free ? 'RESTER ICI' : (tier == SubscriptionTier.diamond ? 'NOUS CONTACTER' : 'S\'ABONNER')),
               ),
           ],
         ),
@@ -86,9 +88,8 @@ class PaywallView extends StatelessWidget {
     );
   }
 
-  void _showPaymentSheet(BuildContext context, SubscriptionTier tier) {
+  void _showSubscriptionProcess(BuildContext context, SubscriptionTier tier) {
     if (tier == SubscriptionTier.free) {
-      // Si on choisit de rester en gratuit, on accède quand même au tableau de bord
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(builder: (context) => const DashboardView()),
@@ -97,6 +98,32 @@ class PaywallView extends StatelessWidget {
       return;
     }
 
+    if (tier == SubscriptionTier.diamond) {
+      _showDiamondContactForm(context);
+      return;
+    }
+
+    _showPaymentSheet(context, tier);
+  }
+
+  void _showDiamondContactForm(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (context) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+          left: 20,
+          right: 20,
+          top: 20,
+        ),
+        child: const _DiamondContactForm(),
+      ),
+    );
+  }
+
+  void _showPaymentSheet(BuildContext context, SubscriptionTier tier) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -110,6 +137,118 @@ class PaywallView extends StatelessWidget {
         ),
         child: _PaymentSimulationForm(tier: tier),
       ),
+    );
+  }
+}
+
+class _DiamondContactForm extends StatefulWidget {
+  const _DiamondContactForm();
+
+  @override
+  State<_DiamondContactForm> createState() => _DiamondContactFormState();
+}
+
+class _DiamondContactFormState extends State<_DiamondContactForm> {
+  final _messageController = TextEditingController();
+  bool _isSent = false;
+  bool _isSending = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final loginVM = Provider.of<LoginViewModel>(context, listen: false);
+    final user = loginVM.currentUser;
+
+    if (_isSent) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 40),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.check_circle_outline, color: Color(0xFF00A859), size: 80),
+            const SizedBox(height: 20),
+            const Text(
+              'Demande envoyée !',
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 10),
+            const Text(
+              'Un administrateur de MMCGO Drivers vous recontactera très rapidement pour convenir avec vous de vos besoins.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey),
+            ),
+            const SizedBox(height: 30),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF00A859),
+                minimumSize: const Size.fromHeight(50),
+              ),
+              child: const Text('RETOUR'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Intéressé par le forfait Diamant ?',
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 10),
+        const Text(
+          'Ce forfait est destiné aux entreprises. Laissez-nous un message et nous vous recontacterons pour une solution sur-mesure.',
+          style: TextStyle(color: Colors.grey),
+        ),
+        const SizedBox(height: 20),
+        TextField(
+          controller: _messageController,
+          maxLines: 4,
+          decoration: InputDecoration(
+            hintText: 'Vos besoins spécifiques (nombre de chauffeurs, type de flotte...)',
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        ),
+        const SizedBox(height: 30),
+        _isSending
+            ? const Center(child: CircularProgressIndicator())
+            : ElevatedButton(
+                onPressed: () async {
+                  if (_messageController.text.trim().isEmpty) return;
+
+                  setState(() => _isSending = true);
+
+                  final success = await EmailService.sendDiamondRequest(
+                    senderEmail: user?.username ?? 'Email inconnu',
+                    senderName: user?.fullName ?? 'Utilisateur Inconnu',
+                    message: _messageController.text,
+                  );
+
+                  if (mounted) {
+                    setState(() {
+                      _isSending = false;
+                      if (success) {
+                        _isSent = true;
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Échec de l\'envoi. Veuillez réessayer.')),
+                        );
+                      }
+                    });
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.orange,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size.fromHeight(55),
+                ),
+                child: const Text('ENVOYER MA DEMANDE'),
+              ),
+        const SizedBox(height: 20),
+      ],
     );
   }
 }

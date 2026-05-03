@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../viewmodels/login_viewmodel.dart';
 import '../../viewmodels/subscription_viewmodel.dart';
 import '../../viewmodels/planning_viewmodel.dart';
+import '../../viewmodels/vehicle_viewmodel.dart';
 import '../subscription/paywall_view.dart';
 
 class RegisterView extends StatefulWidget {
@@ -86,9 +87,11 @@ class _RegisterViewState extends State<RegisterView> {
                         return;
                       }
                       
-                      // On utilise le login existant pour simuler la création + connexion
+                      // Synchronisation des identifiants avec le ViewModel
                       viewModel.usernameController.text = _emailController.text;
-                      final success = await viewModel.login();
+                      viewModel.passwordController.text = _passwordController.text;
+
+                      final success = await viewModel.register(_fullNameController.text);
                       
                       if (success && mounted) {
                         // Synchronisation du user avec le SubscriptionViewModel
@@ -97,7 +100,11 @@ class _RegisterViewState extends State<RegisterView> {
 
                         // Synchronisation avec le PlanningViewModel pour le calendrier individuel
                         final planningVM = Provider.of<PlanningViewModel>(context, listen: false);
-                        planningVM.setCurrentDriver(viewModel.currentUser!.username);
+                        planningVM.setCurrentDriver(viewModel.currentUser!.id);
+
+                        // Chargement initial des véhicules
+                        final vehicleVM = Provider.of<VehicleViewModel>(context, listen: false);
+                        vehicleVM.fetchVehicles();
 
                         // Redirection vers le Paywall comme demandé pour les nouveaux utilisateurs sans forfait
                         Navigator.pushAndRemoveUntil(

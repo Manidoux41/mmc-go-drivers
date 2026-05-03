@@ -1,43 +1,66 @@
 import 'package:flutter/material.dart';
 import '../models/user.dart';
-import '../models/subscription_tier.dart';
+import '../services/supabase_service.dart';
 
 class FleetAdminViewModel extends ChangeNotifier {
-  final List<User> _drivers = [
-    User(username: 'driver1', fullName: 'Jean Dupont', tier: SubscriptionTier.professional),
-    User(username: 'driver2', fullName: 'Marie Durand', tier: SubscriptionTier.professional),
-    User(username: 'driver3', fullName: 'Pierre Martin', tier: SubscriptionTier.professional),
-  ];
-
-  // Simulation d'une base de données de mots de passe
-  final Map<String, String> _passwords = {
-    'driver1': 'password123',
-    'driver2': 'password123',
-    'driver3': 'password123',
-  };
+  List<User> _drivers = [];
+  bool _isLoading = false;
 
   List<User> get drivers => _drivers;
+  bool get isLoading => _isLoading;
 
-  void addDriver(String username, String fullName, String password) {
-    _drivers.add(User(username: username, fullName: fullName, tier: SubscriptionTier.professional));
-    _passwords[username] = password;
+  Future<void> fetchDrivers() async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final data = await SupabaseService.client
+          .from('profiles')
+          .select()
+          .order('full_name');
+      
+      _drivers = (data as List).map((d) => User.fromJson(d)).toList();
+    } catch (e) {
+      debugPrint("Erreur fetch drivers : ${e.toString()}");
+    }
+
+    _isLoading = false;
     notifyListeners();
   }
 
-  bool validateCredentials(String username, String password) {
-    return _passwords.containsKey(username) && _passwords[username] == password;
-  }
-
-  User? getDriver(String username) {
+  Future<void> addDriver(String email, String fullName, String password) async {
     try {
-      return _drivers.firstWhere((d) => d.username == username);
+      // Pour Supabase, l'admin peut créer des utilisateurs via auth.signUp
+      // mais en général c'est mieux via une Edge Function si on veut gérer les mots de passe.
+      // Pour ce prototype, on simule l'inscription.
+      await SupabaseService.client.auth.signUp(
+        email: email,
+        password: password,
+        data: {'full_name': fullName},
+      );
+      
+      await fetchDrivers();
     } catch (e) {
-      return null;
+      debugPrint("Erreur add driver : ${e.toString()}");
     }
   }
 
-  void removeDriver(String username) {
-    _drivers.removeWhere((d) => d.username == username);
-    notifyListeners();
+  Future<void> removeDriver(String driverId) async {
+    try {
+      // Suppression du profil (la cascade supprimera l'auth.user si configuré, 
+      // sinon il faut une Edge Function)
+      await SupabaseService.client
+          .from('profiles')
+          .delete()
+          .eq('id', driverId);
+      
+      await fetchDrivers();
+    } catch (e) {
+      debugPrint("Erreur remove driver : ${e.toString()}");
+    }
   }
+
+  // Ces méthodes ne sont plus nécessaires avec la vraie Auth Supabase
+  bool validateCredentials(String username, String password) => false;
+  User? getDriver(String username) => null;
 }

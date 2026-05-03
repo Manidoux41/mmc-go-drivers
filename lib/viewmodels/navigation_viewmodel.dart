@@ -77,7 +77,7 @@ class NavigationViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  void stopRecording(String name) {
+  void stopRecording(String name, String? userId) {
     _isRecording = false;
     
     final newTrip = RecordedTrip(
@@ -90,6 +90,7 @@ class NavigationViewModel extends ChangeNotifier {
     );
     
     _savedTrips.add(newTrip);
+    // TODO: Optionnel - Sauvegarder aussi le trajet enregistré dans Supabase
     notifyListeners();
   }
 

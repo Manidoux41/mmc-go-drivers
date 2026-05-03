@@ -3,13 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:http/http.dart' as http;
 
+import '../config/secrets.dart';
+
 class StripeService {
-  // Clé publique de test (à remplacer par la vôtre en prod)
-  static const String _publishableKey = 'pk_test_51PqJ...' ; // Remplacer par une vraie pk_test
-  
-  // Dans une vraie app, cette clé REST reste sur votre serveur (backend)
-  // Pour la démo, on simule l'appel backend ici.
-  static const String _secretKey = 'sk_test_...' ; 
+  static const String _publishableKey = AppSecrets.stripePublishableKey;
+  static const String _secretKey = AppSecrets.stripeSecretKey;
 
   static Future<void> init() async {
     Stripe.publishableKey = _publishableKey;
@@ -21,10 +19,16 @@ class StripeService {
     required String currency,
   }) async {
     try {
-      // 1. Créer le PaymentIntent côté "Serveur" (Simulation)
+      // 1. Créer le PaymentIntent
       final paymentIntent = await _createPaymentIntent(amount, currency);
+      
+      if (paymentIntent == null || paymentIntent['client_secret'] == null) {
+        debugPrint('Erreur: Le serveur Stripe n\'a pas renvoyé de client_secret');
+        debugPrint('Réponse Stripe: $paymentIntent');
+        return false;
+      }
 
-      // 2. Initialiser le Payment Sheet (Fenêtre native Stripe)
+      // 2. Initialiser le Payment Sheet
       await Stripe.instance.initPaymentSheet(
         paymentSheetParameters: SetupPaymentSheetParameters(
           paymentIntentClientSecret: paymentIntent['client_secret'],
@@ -39,22 +43,24 @@ class StripeService {
       return true;
     } catch (e) {
       if (e is StripeException) {
-        debugPrint('Erreur Stripe: ${e.error.localizedMessage}');
+        if (e.error.code == FailureCode.Canceled) {
+          debugPrint('Paiement annulé par l\'utilisateur');
+        } else {
+          debugPrint('Erreur Stripe fatale: ${e.error.localizedMessage}');
+        }
       } else {
-        debugPrint('Erreur de paiement: $e');
+        debugPrint('Erreur inconnue lors du paiement: $e');
       }
       return false;
     }
   }
 
   static Future<Map<String, dynamic>> _createPaymentIntent(String amount, String currency) async {
-    // Note: Dans une app réelle, ce code DOIT être sur votre serveur Node/Python/PHP
-    // Car la secretKey ne doit JAMAIS être dans l'app mobile.
     try {
       Map<String, dynamic> body = {
         'amount': _calculateAmount(amount),
         'currency': currency,
-        'payment_method_types[]': 'card'
+        'automatic_payment_methods[enabled]': 'true',
       };
 
       var response = await http.post(
@@ -65,15 +71,19 @@ class StripeService {
         },
         body: body,
       );
-      return jsonDecode(response.body);
+      
+      final Map<String, dynamic> data = jsonDecode(response.body);
+      if (data['error'] != null) {
+        debugPrint('Erreur API Stripe (PaymentIntent): ${data['error']['message']}');
+      }
+      return data;
     } catch (err) {
-      debugPrint('Erreur createPaymentIntent: ${err.toString()}');
+      debugPrint('Erreur réseau createPaymentIntent: ${err.toString()}');
       rethrow;
     }
   }
 
   static String _calculateAmount(String amount) {
-    // Stripe attend le montant en centimes (ex: 2.99€ -> 299)
     final a = (double.parse(amount) * 100).toInt();
     return a.toString();
   }

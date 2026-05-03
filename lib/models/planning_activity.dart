@@ -13,7 +13,7 @@ class PlanningActivity {
   final String? arrival;
   final List<Waypoint>? stops; // Pour les Billet Collectifs (BC)
   final Vehicle? vehicle; // Lien vers l'objet véhicule complet
-  final String? driverId; // Pour identifier le conducteur (Diamant)
+  final String? driverId; // UUID du conducteur (Diamant)
 
   PlanningActivity({
     required this.id,
@@ -28,6 +28,39 @@ class PlanningActivity {
     this.driverId,
   });
 
+  factory PlanningActivity.fromJson(Map<String, dynamic> json, {Vehicle? vehicle}) {
+    return PlanningActivity(
+      id: json['id'],
+      title: json['title'],
+      type: _typeFromString(json['type']),
+      startTime: DateTime.parse(json['start_time']),
+      endTime: DateTime.parse(json['end_time']),
+      departure: json['departure'],
+      arrival: json['arrival'],
+      vehicle: vehicle,
+      driverId: json['driver_id'],
+      stops: (json['stops'] as List?)?.map((s) => Waypoint.fromJson(s)).toList(),
+    );
+  }
+
+  static ActivityType _typeFromString(String type) {
+    return ActivityType.values.firstWhere((e) => e.name == type, orElse: () => ActivityType.trip);
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'title': title,
+      'type': type.name,
+      'start_time': startTime.toIso8601String(),
+      'end_time': endTime.toIso8601String(),
+      'departure': departure,
+      'arrival': arrival,
+      'vehicle_id': vehicle?.id,
+      'driver_id': driverId,
+      'stops': stops?.map((s) => s.toJson()).toList(),
+    };
+  }
+
   String? get busNumber => vehicle?.registration;
 
   Duration get duration => endTime.difference(startTime);
@@ -40,4 +73,19 @@ class Waypoint {
   final LatLng location;
 
   Waypoint({required this.name, required this.location});
+
+  factory Waypoint.fromJson(Map<String, dynamic> json) {
+    return Waypoint(
+      name: json['name'],
+      location: LatLng(json['lat'], json['lng']),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'name': name,
+      'lat': location.latitude,
+      'lng': location.longitude,
+    };
+  }
 }

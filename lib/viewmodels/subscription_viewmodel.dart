@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/subscription_tier.dart';
 import '../models/user.dart';
 import '../services/stripe_service.dart';
+import '../services/supabase_service.dart';
 
 class SubscriptionViewModel extends ChangeNotifier {
   User? _currentUser;
@@ -35,6 +36,16 @@ class SubscriptionViewModel extends ChangeNotifier {
 
     if (success && _currentUser != null) {
       _currentUser!.tier = tier;
+      
+      // Mise à jour réelle dans Supabase
+      try {
+        await SupabaseService.client
+            .from('profiles')
+            .update({'tier': tier.name.toLowerCase()})
+            .eq('id', _currentUser!.id);
+      } catch (e) {
+        debugPrint("Erreur mise à jour tier Supabase : ${e.toString()}");
+      }
     }
 
     _isProcessing = false;

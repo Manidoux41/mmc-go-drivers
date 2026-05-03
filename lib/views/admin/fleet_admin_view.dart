@@ -43,28 +43,43 @@ class FleetAdminView extends StatelessWidget {
   }
 }
 
-class _ManageDriversTab extends StatelessWidget {
+class _ManageDriversTab extends StatefulWidget {
   const _ManageDriversTab();
+
+  @override
+  State<_ManageDriversTab> createState() => _ManageDriversTabState();
+}
+
+class _ManageDriversTabState extends State<_ManageDriversTab> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<FleetAdminViewModel>(context, listen: false).fetchDrivers();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final viewModel = Provider.of<FleetAdminViewModel>(context);
     return Scaffold(
-      body: ListView.builder(
-        itemCount: viewModel.drivers.length,
-        itemBuilder: (context, index) {
-          final driver = viewModel.drivers[index];
-          return ListTile(
-            leading: const CircleAvatar(child: Icon(Icons.person)),
-            title: Text(driver.fullName ?? 'Sans nom'),
-            subtitle: Text('@${driver.username}'),
-            trailing: IconButton(
-              icon: const Icon(Icons.delete, color: Colors.red),
-              onPressed: () => viewModel.removeDriver(driver.username),
-            ),
-          );
-        },
-      ),
+      body: viewModel.isLoading 
+        ? const Center(child: CircularProgressIndicator())
+        : ListView.builder(
+            itemCount: viewModel.drivers.length,
+            itemBuilder: (context, index) {
+              final driver = viewModel.drivers[index];
+              return ListTile(
+                leading: const CircleAvatar(child: Icon(Icons.person)),
+                title: Text(driver.fullName ?? 'Sans nom'),
+                subtitle: Text(driver.username),
+                trailing: IconButton(
+                  icon: const Icon(Icons.delete, color: Colors.red),
+                  onPressed: () => viewModel.removeDriver(driver.id),
+                ),
+              );
+            },
+          ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showAddDriverDialog(context),
         backgroundColor: Colors.blueGrey,
@@ -72,70 +87,85 @@ class _ManageDriversTab extends StatelessWidget {
       ),
     );
   }
+}
 
-  void _showAddDriverDialog(BuildContext context) {
-    final usernameController = TextEditingController();
-    final fullNameController = TextEditingController();
-    final passwordController = TextEditingController();
-    
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Ajouter un conducteur'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(controller: usernameController, decoration: const InputDecoration(labelText: 'Identifiant / Email')),
-            TextField(controller: fullNameController, decoration: const InputDecoration(labelText: 'Nom Complet')),
-            TextField(
-              controller: passwordController, 
-              decoration: const InputDecoration(labelText: 'Mot de passe provisoire'),
-              obscureText: true,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Annuler')),
-          ElevatedButton(
-            onPressed: () {
-              if (usernameController.text.isNotEmpty && passwordController.text.isNotEmpty) {
-                Provider.of<FleetAdminViewModel>(context, listen: false).addDriver(
-                  usernameController.text, 
-                  fullNameController.text,
-                  passwordController.text,
-                );
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Conducteur créé avec succès')),
-                );
-              }
-            },
-            child: const Text('Créer le compte'),
+void _showAddDriverDialog(BuildContext context) {
+  final usernameController = TextEditingController();
+  final fullNameController = TextEditingController();
+  final passwordController = TextEditingController();
+  
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Ajouter un conducteur'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(controller: usernameController, decoration: const InputDecoration(labelText: 'Identifiant / Email')),
+          TextField(controller: fullNameController, decoration: const InputDecoration(labelText: 'Nom Complet')),
+          TextField(
+            controller: passwordController, 
+            decoration: const InputDecoration(labelText: 'Mot de passe provisoire'),
+            obscureText: true,
           ),
         ],
       ),
-    );
-  }
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Annuler')),
+        ElevatedButton(
+          onPressed: () {
+            if (usernameController.text.isNotEmpty && passwordController.text.isNotEmpty) {
+              Provider.of<FleetAdminViewModel>(context, listen: false).addDriver(
+                usernameController.text, 
+                fullNameController.text,
+                passwordController.text,
+              );
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Conducteur créé avec succès')),
+              );
+            }
+          },
+          child: const Text('Créer le compte'),
+        ),
+      ],
+    ),
+  );
 }
 
-class _ManageVehiclesTab extends StatelessWidget {
+class _ManageVehiclesTab extends StatefulWidget {
   const _ManageVehiclesTab();
+
+  @override
+  State<_ManageVehiclesTab> createState() => _ManageVehiclesTabState();
+}
+
+class _ManageVehiclesTabState extends State<_ManageVehiclesTab> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<VehicleViewModel>(context, listen: false).fetchVehicles();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final viewModel = Provider.of<VehicleViewModel>(context);
     return Scaffold(
-      body: ListView.builder(
-        itemCount: viewModel.vehicles.length,
-        itemBuilder: (context, index) {
-          final vehicle = viewModel.vehicles[index];
-          return ListTile(
-            leading: const Icon(Icons.directions_bus),
-            title: Text(vehicle.registration),
-            subtitle: Text('${vehicle.brand} ${vehicle.model}'),
-          );
-        },
-      ),
+      body: viewModel.isLoading
+        ? const Center(child: CircularProgressIndicator())
+        : ListView.builder(
+            itemCount: viewModel.vehicles.length,
+            itemBuilder: (context, index) {
+              final vehicle = viewModel.vehicles[index];
+              return ListTile(
+                leading: const Icon(Icons.directions_bus),
+                title: Text(vehicle.registration),
+                subtitle: Text('${vehicle.brand} ${vehicle.model}'),
+              );
+            },
+          ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showAddVehicleDialog(context),
         backgroundColor: Colors.blueGrey,
@@ -143,50 +173,50 @@ class _ManageVehiclesTab extends StatelessWidget {
       ),
     );
   }
+}
 
-  void _showAddVehicleDialog(BuildContext context) {
-    final registrationController = TextEditingController();
-    final brandController = TextEditingController();
-    final modelController = TextEditingController();
+void _showAddVehicleDialog(BuildContext context) {
+  final registrationController = TextEditingController();
+  final brandController = TextEditingController();
+  final modelController = TextEditingController();
 
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Ajouter un véhicule'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(controller: registrationController, decoration: const InputDecoration(labelText: 'Immatriculation')),
-            TextField(controller: brandController, decoration: const InputDecoration(labelText: 'Marque')),
-            TextField(controller: modelController, decoration: const InputDecoration(labelText: 'Modèle')),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Annuler')),
-          ElevatedButton(
-            onPressed: () {
-              final newVehicle = Vehicle(
-                id: DateTime.now().millisecondsSinceEpoch.toString(),
-                registration: registrationController.text,
-                brand: brandController.text,
-                model: modelController.text,
-                height: 3.5,
-                length: 12.0,
-                width: 2.5,
-                unladenWeight: 12.0,
-                ptac: 19.0,
-                fuelType: FuelType.diesel,
-                mileage: 0,
-              );
-              Provider.of<VehicleViewModel>(context, listen: false).addVehicle(newVehicle);
-              Navigator.pop(context);
-            },
-            child: const Text('Ajouter'),
-          ),
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Ajouter un véhicule'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(controller: registrationController, decoration: const InputDecoration(labelText: 'Immatriculation')),
+          TextField(controller: brandController, decoration: const InputDecoration(labelText: 'Marque')),
+          TextField(controller: modelController, decoration: const InputDecoration(labelText: 'Modèle')),
         ],
       ),
-    );
-  }
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Annuler')),
+        ElevatedButton(
+          onPressed: () {
+            final newVehicle = Vehicle(
+              id: DateTime.now().millisecondsSinceEpoch.toString(),
+              registration: registrationController.text,
+              brand: brandController.text,
+              model: modelController.text,
+              height: 3.5,
+              length: 12.0,
+              width: 2.5,
+              unladenWeight: 12.0,
+              ptac: 19.0,
+              fuelType: FuelType.diesel,
+              mileage: 0,
+            );
+            Provider.of<VehicleViewModel>(context, listen: false).addVehicle(newVehicle);
+            Navigator.pop(context);
+          },
+          child: const Text('Ajouter'),
+        ),
+      ],
+    ),
+  );
 }
 
 class _PlanningOverviewRoot extends StatefulWidget {
@@ -222,9 +252,9 @@ class _PlanningOverviewRootState extends State<_PlanningOverviewRoot> {
                   onPressed: () {
                     final weekStart = _selectedDate.subtract(Duration(days: _selectedDate.weekday - 1));
                     Map<String, List<PlanningActivity>> data = {};
-                    for (var driver in fleetVM.drivers) {
-                      data[driver.fullName ?? driver.username] = planningVM.getFilteredActivitiesForDriver(driver.username, weekStart, 7);
-                    }
+                      for (var driver in fleetVM.drivers) {
+                        data[driver.fullName ?? driver.username] = planningVM.getFilteredActivitiesForDriver(driver.id, weekStart, 7);
+                      }
                     PdfService.generateWeeklyPlanning(weekStart, data);
                   },
                   tooltip: 'Exporter la semaine en PDF',
@@ -333,7 +363,7 @@ class _DailyOverviewTable extends StatelessWidget {
             const DataColumn(label: Text('Missions du jour', style: TextStyle(fontWeight: FontWeight.bold))),
           ],
           rows: fleetVM.drivers.map((driver) {
-            final activities = planningVM.getActivitiesForDriver(driver.username, date);
+            final activities = planningVM.getActivitiesForDriver(driver.id, date);
             return DataRow(cells: [
               DataCell(Text(driver.fullName ?? driver.username, style: const TextStyle(fontWeight: FontWeight.bold))),
               DataCell(
@@ -390,7 +420,7 @@ class _WeeklyOverviewTable extends StatelessWidget {
             return DataRow(cells: [
               DataCell(Text(driver.fullName ?? driver.username, style: const TextStyle(fontWeight: FontWeight.bold))),
               ...days.map((d) {
-                final activities = planningVM.getActivitiesForDriver(driver.username, d);
+                final activities = planningVM.getActivitiesForDriver(driver.id, d);
                 return DataCell(
                   InkWell(
                     onTap: () => _showDayEditDialog(context, driver, d, activities),
@@ -471,7 +501,6 @@ void _showAddMissionDialog(BuildContext context, DateTime date, dynamic selected
   final departureController = TextEditingController();
   final arrivalController = TextEditingController();
   final vehicleVM = Provider.of<VehicleViewModel>(context, listen: false);
-  final fleetVM = Provider.of<FleetAdminViewModel>(context, listen: false);
   
   Vehicle? selectedVehicle = vehicleVM.vehicles.isNotEmpty ? vehicleVM.vehicles.first : null;
 
@@ -511,7 +540,7 @@ void _showAddMissionDialog(BuildContext context, DateTime date, dynamic selected
                 departure: departureController.text,
                 arrival: arrivalController.text,
                 vehicle: selectedVehicle,
-                driverId: selectedDriver.username,
+                driverId: selectedDriver.id,
               );
               Provider.of<PlanningViewModel>(context, listen: false).addActivity(activity);
               Navigator.pop(context);
