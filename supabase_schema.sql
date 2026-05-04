@@ -35,8 +35,13 @@ CREATE TABLE activities (
   vehicle_id UUID REFERENCES vehicles(id) ON DELETE SET NULL,
   driver_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
   stops JSONB, -- Pour les points de passage BC
+  file_path TEXT, -- Chemin vers le PDF sur Supabase Storage
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- 4. Bucket pour les plannings PDF
+-- (À exécuter si le bucket n'existe pas déjà via l'interface Supabase)
+-- INSERT INTO storage.buckets (id, name, public) VALUES ('plannings', 'plannings', true);
 
 -- RLS (Row Level Security) - Configuration de base
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;

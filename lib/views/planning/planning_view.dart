@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../viewmodels/planning_viewmodel.dart';
+import '../../viewmodels/login_viewmodel.dart';
 import '../../models/planning_activity.dart';
+import '../../models/subscription_tier.dart';
 import '../../services/pdf_service.dart';
+import '../../services/storage_service.dart';
 import '../navigation/navigation_view.dart';
 
 class PlanningView extends StatefulWidget {
@@ -74,6 +78,19 @@ class _PlanningViewState extends State<PlanningView> {
           );
         },
       ),
+      floatingActionButton: Consumer<LoginViewModel>(
+        builder: (context, loginVM, child) {
+          final tier = loginVM.currentUser?.tier ?? SubscriptionTier.free;
+          if (tier.index >= SubscriptionTier.professional.index) {
+            return FloatingActionButton(
+              onPressed: () => context.read<PlanningViewModel>().uploadPhotoPlanning(context.read<PlanningViewModel>().selectedDate),
+              backgroundColor: Theme.of(context).primaryColor,
+              child: const Icon(Icons.add_a_photo, color: Colors.white),
+            );
+          }
+          return const SizedBox.shrink();
+        },
+      ),
     );
   }
 
@@ -118,19 +135,27 @@ class _PlanningViewState extends State<PlanningView> {
         border: Border(left: BorderSide(color: accentColor, width: 6)),
       ),
       child: ListTile(
-        onTap: () => _showActivityDetails(context, activity),
+        onTap: () {
+          if (activity.type == ActivityType.photo_planning && activity.filePath != null) {
+            final url = StorageService.getPublicUrl(activity.filePath!);
+            launchUrl(Uri.parse(url));
+          } else {
+            _showActivityDetails(context, activity);
+          }
+        },
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         title: Row(
           children: [
             Text(
-              '${timeFormat.format(activity.startTime)} - ${timeFormat.format(activity.endTime)}',
+              activity.type == ActivityType.photo_planning ? 'Planning PDF' : '${timeFormat.format(activity.startTime)} - ${timeFormat.format(activity.endTime)}',
               style: TextStyle(fontWeight: FontWeight.bold, color: accentColor),
             ),
             const Spacer(),
-            Text(
-              '${activity.duration.inMinutes}m',
-              style: const TextStyle(fontSize: 12, color: Colors.grey),
-            ),
+            if (activity.type != ActivityType.photo_planning)
+              Text(
+                '${activity.duration.inMinutes}m',
+                style: const TextStyle(fontSize: 12, color: Colors.grey),
+              ),
           ],
         ),
         subtitle: Column(
@@ -165,12 +190,14 @@ class _PlanningViewState extends State<PlanningView> {
               ),
           ],
         ),
-        trailing: activity.type == ActivityType.bc 
-          ? IconButton(
-              icon: const Icon(Icons.navigation, color: Colors.purple),
-              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => NavigationView(activity: activity))),
-            )
-          : Icon(_getTypeIconData(activity.type), color: accentColor.withOpacity(0.5)),
+        trailing: activity.type == ActivityType.photo_planning
+          ? Icon(Icons.picture_as_pdf, color: accentColor)
+          : (activity.type == ActivityType.bc 
+            ? IconButton(
+                icon: const Icon(Icons.navigation, color: Colors.purple),
+                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => NavigationView(activity: activity))),
+              )
+            : Icon(_getTypeIconData(activity.type), color: accentColor.withOpacity(0.5))),
       ),
     );
   }
@@ -279,6 +306,7 @@ class _PlanningViewState extends State<PlanningView> {
       case ActivityType.nettoyage: return Colors.orange;
       case ActivityType.hlp: return Colors.blueGrey;
       case ActivityType.bc: return Colors.purple;
+      case ActivityType.photo_planning: return Colors.teal;
     }
   }
 
@@ -290,6 +318,7 @@ class _PlanningViewState extends State<PlanningView> {
       case ActivityType.nettoyage: return Icons.cleaning_services;
       case ActivityType.hlp: return Icons.arrow_forward;
       case ActivityType.bc: return Icons.groups;
+      case ActivityType.photo_planning: return Icons.picture_as_pdf;
     }
   }
 }

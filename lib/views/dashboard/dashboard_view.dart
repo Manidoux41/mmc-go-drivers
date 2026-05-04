@@ -131,7 +131,7 @@ class DashboardView extends StatelessWidget {
         ),
         child: Center(
           child: Text(
-            tier.name.toUpperCase(),
+            tier.displayName.toUpperCase(),
             style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
           ),
         ),

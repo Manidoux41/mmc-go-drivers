@@ -6,7 +6,7 @@ enum SubscriptionTier {
 }
 
 extension SubscriptionTierExtension on SubscriptionTier {
-  String get name {
+  String get displayName {
     switch (this) {
       case SubscriptionTier.free:
         return 'Gratuit';

@@ -1,8 +1,12 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:latlong2/latlong.dart';
 import '../models/planning_activity.dart';
 import '../models/vehicle.dart';
 import '../services/supabase_service.dart';
+import '../services/pdf_service.dart';
+import '../services/storage_service.dart';
 import 'vehicle_viewmodel.dart';
 
 enum PlanningViewMode { day, week, month }
@@ -44,9 +48,16 @@ class PlanningViewModel extends ChangeNotifier {
       
       _activities = (data as List).map((json) {
         final vehicleId = json['vehicle_id'];
-        final vehicle = vehicleId != null 
-            ? vehicleViewModel.vehicles.firstWhere((v) => v.id == vehicleId)
-            : null;
+        Vehicle? vehicle;
+        
+        if (vehicleId != null && vehicleViewModel.vehicles.isNotEmpty) {
+          try {
+            vehicle = vehicleViewModel.vehicles.firstWhere((v) => v.id == vehicleId);
+          } catch (_) {
+            // Véhicule non trouvé dans la liste locale
+          }
+        }
+
         return PlanningActivity.fromJson(json, vehicle: vehicle);
       }).toList();
     } catch (e) {
@@ -55,6 +66,45 @@ class PlanningViewModel extends ChangeNotifier {
 
     _isLoading = false;
     notifyListeners();
+  }
+
+  Future<void> uploadPhotoPlanning(DateTime date) async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: ImageSource.camera);
+
+    if (pickedFile != null && _currentDriverId != null) {
+      _isLoading = true;
+      notifyListeners();
+
+      try {
+        // 1. Image -> PDF
+        final pdfFile = await PdfService.imageToPdf(File(pickedFile.path));
+
+        // 2. Upload to Storage
+        final fileName = 'planning_${_currentDriverId}_${date.millisecondsSinceEpoch}.pdf';
+        final storagePath = await StorageService.uploadPlanningPdf(pdfFile, fileName);
+
+        if (storagePath != null) {
+          // 3. Create Activity
+          final activity = PlanningActivity(
+            id: '', // Supabase générera l'id
+            title: 'Planning Photo du ${date.day}/${date.month}',
+            type: ActivityType.photo_planning,
+            startTime: date.copyWith(hour: 8),
+            endTime: date.copyWith(hour: 18),
+            driverId: _currentDriverId,
+            filePath: storagePath,
+          );
+
+          await addActivity(activity);
+        }
+      } catch (e) {
+        debugPrint("Erreur upload photo planning : $e");
+      }
+
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 
   Future<void> addActivity(PlanningActivity activity) async {

@@ -85,7 +85,7 @@ class _NavigationViewState extends State<NavigationView> {
                       overflow: TextOverflow.ellipsis,
                     ),
                     Text(
-                      'Abonnement : ${tier.name}',
+                      'Abonnement : ${tier.displayName}',
                       style: const TextStyle(color: Colors.white70, fontSize: 13),
                     ),
                   ],

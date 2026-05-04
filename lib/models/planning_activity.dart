@@ -1,7 +1,7 @@
 import 'vehicle.dart';
 import 'package:latlong2/latlong.dart';
 
-enum ActivityType { ps, fs, trip, nettoyage, hlp, bc }
+enum ActivityType { ps, fs, trip, nettoyage, hlp, bc, photo_planning }
 
 class PlanningActivity {
   final String id;
@@ -14,6 +14,7 @@ class PlanningActivity {
   final List<Waypoint>? stops; // Pour les Billet Collectifs (BC)
   final Vehicle? vehicle; // Lien vers l'objet véhicule complet
   final String? driverId; // UUID du conducteur (Diamant)
+  final String? filePath; // Chemin vers le PDF sur Supabase Storage
 
   PlanningActivity({
     required this.id,
@@ -26,6 +27,7 @@ class PlanningActivity {
     this.stops,
     this.vehicle,
     this.driverId,
+    this.filePath,
   });
 
   factory PlanningActivity.fromJson(Map<String, dynamic> json, {Vehicle? vehicle}) {
@@ -39,12 +41,16 @@ class PlanningActivity {
       arrival: json['arrival'],
       vehicle: vehicle,
       driverId: json['driver_id'],
+      filePath: json['file_path'],
       stops: (json['stops'] as List?)?.map((s) => Waypoint.fromJson(s)).toList(),
     );
   }
 
   static ActivityType _typeFromString(String type) {
-    return ActivityType.values.firstWhere((e) => e.name == type, orElse: () => ActivityType.trip);
+    return ActivityType.values.firstWhere(
+      (e) => e.name == type, 
+      orElse: () => ActivityType.trip
+    );
   }
 
   Map<String, dynamic> toJson() {
@@ -57,6 +63,7 @@ class PlanningActivity {
       'arrival': arrival,
       'vehicle_id': vehicle?.id,
       'driver_id': driverId,
+      'file_path': filePath,
       'stops': stops?.map((s) => s.toJson()).toList(),
     };
   }

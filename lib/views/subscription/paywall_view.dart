@@ -47,7 +47,7 @@ class PaywallView extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  tier.name,
+                  tier.displayName,
                   style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                 ),
                 Text(
@@ -280,7 +280,7 @@ class _PaymentSimulationFormState extends State<_PaymentSimulationForm> {
           style: Theme.of(context).textTheme.headlineSmall,
         ),
         const SizedBox(height: 10),
-        Text('Abonnement : ${widget.tier.name} - ${widget.tier.price}€/mois'),
+        Text('Abonnement : ${widget.tier.displayName} - ${widget.tier.price}€/mois'),
         const Divider(height: 30),
         
         // Sélecteur de mode de paiement
@@ -335,7 +335,7 @@ class _PaymentSimulationFormState extends State<_PaymentSimulationForm> {
                       (route) => false,
                     );
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Félicitations ! Vous êtes maintenant ${widget.tier.name}')),
+                      SnackBar(content: Text('Félicitations ! Vous êtes maintenant ${widget.tier.displayName}')),
                     );
                   } else if (!success && mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(

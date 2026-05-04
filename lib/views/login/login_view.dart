@@ -120,18 +120,11 @@ class LoginView extends StatelessWidget {
                               final vehicleVM = Provider.of<VehicleViewModel>(context, listen: false);
                               vehicleVM.fetchVehicles();
 
-                              if (viewModel.currentUser!.tier == SubscriptionTier.free) {
-                                // Rediriger vers le Paywall si aucun forfait (free)
-                                Navigator.pushReplacement(
-                                  context,
-                                  MaterialPageRoute(builder: (context) => const PaywallView()),
-                                );
-                              } else {
-                                Navigator.pushReplacement(
-                                  context,
-                                  MaterialPageRoute(builder: (context) => const DashboardView()),
-                                );
-                              }
+                              // Redirection systématique vers le Dashboard pour les utilisateurs déjà inscrits
+                              Navigator.pushReplacement(
+                                context,
+                                MaterialPageRoute(builder: (context) => const DashboardView()),
+                              );
                             }
                           },
                           style: ElevatedButton.styleFrom(

@@ -13,6 +13,18 @@ class LoginViewModel extends ChangeNotifier {
   bool _isLoading = false;
   bool get isLoading => _isLoading;
 
+  LoginViewModel() {
+    _checkExistingSession();
+  }
+
+  Future<void> _checkExistingSession() async {
+    final session = SupabaseService.client.auth.currentSession;
+    if (session != null && session.user != null) {
+      await _fetchProfile(session.user.id);
+      notifyListeners();
+    }
+  }
+
   Future<bool> login() async {
     final email = usernameController.text.trim();
     final password = passwordController.text.trim();
@@ -30,9 +42,12 @@ class LoginViewModel extends ChangeNotifier {
 
       if (response.user != null) {
         await _fetchProfile(response.user!.id);
-        _isLoading = false;
-        notifyListeners();
-        return true;
+        
+        if (_currentUser != null) {
+          _isLoading = false;
+          notifyListeners();
+          return true;
+        }
       }
     } catch (e) {
       debugPrint("Erreur connexion : ${e.toString()}");
