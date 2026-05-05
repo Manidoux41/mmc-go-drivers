@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import '../models/subscription_tier.dart';
 import '../models/user.dart';
-import '../services/stripe_service.dart';
 import '../services/supabase_service.dart';
+import '../services/stripe_service.dart';
 
 class SubscriptionViewModel extends ChangeNotifier {
   User? _currentUser;

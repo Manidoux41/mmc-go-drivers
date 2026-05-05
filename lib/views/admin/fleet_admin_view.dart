@@ -87,50 +87,50 @@ class _ManageDriversTabState extends State<_ManageDriversTab> {
       ),
     );
   }
-}
 
-void _showAddDriverDialog(BuildContext context) {
-  final usernameController = TextEditingController();
-  final fullNameController = TextEditingController();
-  final passwordController = TextEditingController();
-  
-  showDialog(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: const Text('Ajouter un conducteur'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          TextField(controller: usernameController, decoration: const InputDecoration(labelText: 'Identifiant / Email')),
-          TextField(controller: fullNameController, decoration: const InputDecoration(labelText: 'Nom Complet')),
-          TextField(
-            controller: passwordController, 
-            decoration: const InputDecoration(labelText: 'Mot de passe provisoire'),
-            obscureText: true,
+  void _showAddDriverDialog(BuildContext context) {
+    final usernameController = TextEditingController();
+    final fullNameController = TextEditingController();
+    final passwordController = TextEditingController();
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Ajouter un conducteur'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(controller: usernameController, decoration: const InputDecoration(labelText: 'Identifiant / Email')),
+            TextField(controller: fullNameController, decoration: const InputDecoration(labelText: 'Nom Complet')),
+            TextField(
+              controller: passwordController, 
+              decoration: const InputDecoration(labelText: 'Mot de passe provisoire'),
+              obscureText: true,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Annuler')),
+          ElevatedButton(
+            onPressed: () {
+              if (usernameController.text.isNotEmpty && passwordController.text.isNotEmpty) {
+                Provider.of<FleetAdminViewModel>(context, listen: false).addDriver(
+                  usernameController.text, 
+                  fullNameController.text,
+                  passwordController.text,
+                );
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Conducteur créé avec succès')),
+                );
+              }
+            },
+            child: const Text('Créer le compte'),
           ),
         ],
       ),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Annuler')),
-        ElevatedButton(
-          onPressed: () {
-            if (usernameController.text.isNotEmpty && passwordController.text.isNotEmpty) {
-              Provider.of<FleetAdminViewModel>(context, listen: false).addDriver(
-                usernameController.text, 
-                fullNameController.text,
-                passwordController.text,
-              );
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Conducteur créé avec succès')),
-              );
-            }
-          },
-          child: const Text('Créer le compte'),
-        ),
-      ],
-    ),
-  );
+    );
+  }
 }
 
 class _ManageVehiclesTab extends StatefulWidget {
@@ -173,50 +173,50 @@ class _ManageVehiclesTabState extends State<_ManageVehiclesTab> {
       ),
     );
   }
-}
 
-void _showAddVehicleDialog(BuildContext context) {
-  final registrationController = TextEditingController();
-  final brandController = TextEditingController();
-  final modelController = TextEditingController();
+  void _showAddVehicleDialog(BuildContext context) {
+    final registrationController = TextEditingController();
+    final brandController = TextEditingController();
+    final modelController = TextEditingController();
 
-  showDialog(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: const Text('Ajouter un véhicule'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          TextField(controller: registrationController, decoration: const InputDecoration(labelText: 'Immatriculation')),
-          TextField(controller: brandController, decoration: const InputDecoration(labelText: 'Marque')),
-          TextField(controller: modelController, decoration: const InputDecoration(labelText: 'Modèle')),
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Ajouter un véhicule'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(controller: registrationController, decoration: const InputDecoration(labelText: 'Immatriculation')),
+            TextField(controller: brandController, decoration: const InputDecoration(labelText: 'Marque')),
+            TextField(controller: modelController, decoration: const InputDecoration(labelText: 'Modèle')),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Annuler')),
+          ElevatedButton(
+            onPressed: () {
+              final newVehicle = Vehicle(
+                id: DateTime.now().millisecondsSinceEpoch.toString(),
+                registration: registrationController.text,
+                brand: brandController.text,
+                model: modelController.text,
+                height: 3.5,
+                length: 12.0,
+                width: 2.5,
+                unladenWeight: 12.0,
+                ptac: 19.0,
+                fuelType: FuelType.diesel,
+                mileage: 0,
+              );
+              Provider.of<VehicleViewModel>(context, listen: false).addVehicle(newVehicle);
+              Navigator.pop(context);
+            },
+            child: const Text('Ajouter'),
+          ),
         ],
       ),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Annuler')),
-        ElevatedButton(
-          onPressed: () {
-            final newVehicle = Vehicle(
-              id: DateTime.now().millisecondsSinceEpoch.toString(),
-              registration: registrationController.text,
-              brand: brandController.text,
-              model: modelController.text,
-              height: 3.5,
-              length: 12.0,
-              width: 2.5,
-              unladenWeight: 12.0,
-              ptac: 19.0,
-              fuelType: FuelType.diesel,
-              mileage: 0,
-            );
-            Provider.of<VehicleViewModel>(context, listen: false).addVehicle(newVehicle);
-            Navigator.pop(context);
-          },
-          child: const Text('Ajouter'),
-        ),
-      ],
-    ),
-  );
+    );
+  }
 }
 
 class _PlanningOverviewRoot extends StatefulWidget {
@@ -227,7 +227,7 @@ class _PlanningOverviewRoot extends StatefulWidget {
 }
 
 class _PlanningOverviewRootState extends State<_PlanningOverviewRoot> {
-  int _subTab = 0; // 0: Assignation, 1: Tableau Journalier, 2: Tableau Hebdo
+  int _subTab = 0; 
   DateTime _selectedDate = DateTime.now();
 
   @override
@@ -356,7 +356,7 @@ class _DailyOverviewTable extends StatelessWidget {
       scrollDirection: Axis.horizontal,
       child: SingleChildScrollView(
         child: DataTable(
-          headingRowColor: MaterialStateProperty.all(Colors.blueGrey.shade100),
+          headingRowColor: WidgetStateProperty.all(Colors.blueGrey.shade100),
           border: TableBorder.all(color: Colors.grey.shade300),
           columns: [
             const DataColumn(label: Text('Conducteur', style: TextStyle(fontWeight: FontWeight.bold))),
@@ -409,7 +409,7 @@ class _WeeklyOverviewTable extends StatelessWidget {
       scrollDirection: Axis.horizontal,
       child: SingleChildScrollView(
         child: DataTable(
-          headingRowColor: MaterialStateProperty.all(Colors.blueGrey.shade100),
+          headingRowColor: WidgetStateProperty.all(Colors.blueGrey.shade100),
           border: TableBorder.all(color: Colors.grey.shade300),
           columnSpacing: 20,
           columns: [
@@ -512,44 +512,44 @@ void _showAddMissionDialog(BuildContext context, DateTime date, dynamic selected
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(controller: titleController, decoration: const InputDecoration(labelText: 'Titre de la mission')),
-              TextField(controller: departureController, decoration: const InputDecoration(labelText: 'Départ')),
-              TextField(controller: arrivalController, decoration: const InputDecoration(labelText: 'Arrivée')),
-              const SizedBox(height: 10),
-              if (vehicleVM.vehicles.isNotEmpty)
-                DropdownButtonFormField<Vehicle>(
-                  value: selectedVehicle,
-                  decoration: const InputDecoration(labelText: 'Véhicule assigné'),
-                  items: vehicleVM.vehicles.map((v) => DropdownMenuItem(value: v, child: Text(v.registration))).toList(),
-                  onChanged: (v) => setDialogState(() => selectedVehicle = v),
-                ),
-            ],
+              children: [
+                TextField(controller: titleController, decoration: const InputDecoration(labelText: 'Titre de la mission')),
+                TextField(controller: departureController, decoration: const InputDecoration(labelText: 'Départ')),
+                TextField(controller: arrivalController, decoration: const InputDecoration(labelText: 'Arrivée')),
+                const SizedBox(height: 10),
+                if (vehicleVM.vehicles.isNotEmpty)
+                  DropdownButtonFormField<Vehicle>(
+                    value: selectedVehicle,
+                    decoration: const InputDecoration(labelText: 'Véhicule assigné'),
+                    items: vehicleVM.vehicles.map((v) => DropdownMenuItem(value: v, child: Text(v.registration))).toList(),
+                    onChanged: (v) => setDialogState(() => selectedVehicle = v),
+                  ),
+              ],
+            ),
           ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Annuler')),
+            ElevatedButton(
+              onPressed: () {
+                final activity = PlanningActivity(
+                  id: DateTime.now().millisecondsSinceEpoch.toString(),
+                  title: titleController.text,
+                  type: ActivityType.trip,
+                  startTime: DateTime(date.year, date.month, date.day, 8, 0),
+                  endTime: DateTime(date.year, date.month, date.day, 10, 0),
+                  departure: departureController.text,
+                  arrival: arrivalController.text,
+                  vehicle: selectedVehicle,
+                  driverId: selectedDriver.id,
+                );
+                Provider.of<PlanningViewModel>(context, listen: false).addActivity(activity);
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Mission ajoutée')));
+              },
+              child: const Text('Ajouter'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Annuler')),
-          ElevatedButton(
-            onPressed: () {
-              final activity = PlanningActivity(
-                id: DateTime.now().millisecondsSinceEpoch.toString(),
-                title: titleController.text,
-                type: ActivityType.trip,
-                startTime: DateTime(date.year, date.month, date.day, 8, 0),
-                endTime: DateTime(date.year, date.month, date.day, 10, 0),
-                departure: departureController.text,
-                arrival: arrivalController.text,
-                vehicle: selectedVehicle,
-                driverId: selectedDriver.id,
-              );
-              Provider.of<PlanningViewModel>(context, listen: false).addActivity(activity);
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Mission ajoutée')));
-            },
-            child: const Text('Ajouter'),
-          ),
-        ],
       ),
-    ),
-  );
+    );
 }

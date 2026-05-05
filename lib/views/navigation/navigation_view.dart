@@ -3,7 +3,9 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 import '../../viewmodels/navigation_viewmodel.dart';
-import '../../models/planning_activity.dart';
+import '../../viewmodels/vehicle_viewmodel.dart';
+import '../../models/planning_activity.dart' hide Waypoint;
+import '../../models/recorded_trip.dart' show Waypoint;
 import '../../models/vehicle.dart';
 import '../../models/subscription_tier.dart';
 import '../../viewmodels/login_viewmodel.dart';
@@ -34,14 +36,20 @@ class _NavigationViewState extends State<NavigationView> {
   @override
   void initState() {
     super.initState();
-    if (widget.activity != null && widget.activity!.stops != null) {
-      // Simulation: Centrer la carte sur le premier point de l'activité
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (widget.activity!.stops!.isNotEmpty) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final viewModel = Provider.of<NavigationViewModel>(context, listen: false);
+      
+      if (widget.activity != null) {
+        if (widget.activity!.stops != null && widget.activity!.stops!.isNotEmpty) {
           _mapController.move(widget.activity!.stops!.first.location, 13.0);
+          
+          // Calcul automatique de l'itinéraire de l'activité
+          if (widget.activity!.vehicle != null) {
+            viewModel.calculateRouteFromActivity(widget.activity!);
+          }
         }
-      });
-    }
+      }
+    });
   }
 
   @override
@@ -232,12 +240,31 @@ class _NavigationViewState extends State<NavigationView> {
                           height: 40,
                           child: const Icon(Icons.directions_bus, color: Colors.deepPurple, size: 30),
                         ),
-                      ...viewModel.currentWaypoints.map((w) => Marker(
+                      ...viewModel.currentWaypoints.map((Waypoint w) => Marker(
                             point: w.point,
                             width: 30,
                             height: 30,
                             child: const Icon(Icons.location_on, color: Colors.red),
                           )),
+                      // Marqueurs d'étapes de l'itinéraire planifié
+                      ...viewModel.plannedWaypoints.asMap().entries.map((entry) {
+                        int idx = entry.key;
+                        LatLng p = entry.value;
+                        return Marker(
+                          point: p,
+                          width: 30,
+                          height: 30,
+                          child: Container(
+                            decoration: const BoxDecoration(color: Colors.orange, shape: BoxShape.circle),
+                            child: Center(
+                              child: Text(
+                                idx == 0 ? 'A' : (idx == viewModel.plannedWaypoints.length - 1 ? 'B' : (idx).toString()),
+                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+                              ),
+                            ),
+                          ),
+                        );
+                      }),
                       ...activityMarkers,
                     ],
                   ),
@@ -353,7 +380,23 @@ class _NavigationViewState extends State<NavigationView> {
     );
   }
 
-  Widget _buildRoutePanel(BuildContext context, NavigationViewModel viewModel, Vehicle? vehicle) {
+  Widget _buildRoutePanel(BuildContext context, NavigationViewModel viewModel, Vehicle? activityVehicle) {
+    // Utiliser le véhicule de l'activité, ou le premier de la flotte, ou un défaut
+    final vehicleVM = Provider.of<VehicleViewModel>(context, listen: false);
+    final vehicle = activityVehicle ?? (vehicleVM.vehicles.isNotEmpty ? vehicleVM.vehicles.first : Vehicle(
+      id: 'default',
+      registration: 'DEMO-PL',
+      brand: 'Mercedes-Benz',
+      model: 'Intouro',
+      height: 3.8,
+      length: 12.0,
+      width: 2.5,
+      unladenWeight: 12.0,
+      ptac: 19.0,
+      fuelType: FuelType.diesel,
+      mileage: 0,
+    ));
+
     return Positioned(
       top: 10,
       left: 10,
@@ -425,13 +468,18 @@ class _NavigationViewState extends State<NavigationView> {
                 children: [
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: vehicle == null ? null : () {
+                      onPressed: viewModel.isCalculating ? null : () {
                         List<String> addresses = _stopControllers.map((c) => c.text).toList();
-                        // Remplacer 'Ma position' par les coordonnées réelles si besoin dans le VM
                         viewModel.calculateMultiStopRoute(addresses, vehicle);
                       },
-                      style: ElevatedButton.styleFrom(backgroundColor: Colors.orange, foregroundColor: Colors.white),
-                      child: const Text('CALCULER L\'ITINÉRAIRE'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.orange, 
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size.fromHeight(50)
+                      ),
+                      child: viewModel.isCalculating 
+                        ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                        : const Text('CALCULER L\'ITINÉRAIRE'),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -444,8 +492,11 @@ class _NavigationViewState extends State<NavigationView> {
                   ),
                 ],
               ),
-              if (vehicle == null)
-                const Text('⚠️ Sélectionnez une mission pour identifier le véhicule', style: TextStyle(color: Colors.red, fontSize: 10)),
+              if (activityVehicle == null)
+                const Padding(
+                  padding: EdgeInsets.only(top: 8.0),
+                  child: Text('ℹ️ Utilisation d\'un profil véhicule standard (Demo)', style: TextStyle(color: Colors.blueGrey, fontSize: 10, fontStyle: FontStyle.italic)),
+                ),
             ],
           ),
         ),

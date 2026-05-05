@@ -20,7 +20,7 @@ class RoutingService {
     final body = jsonEncode({
       "coordinates": points.map((p) => [p.longitude, p.latitude]).toList(),
       "options": {
-        "vehicle_type": "heavy_heavy_hgv",
+        "vehicle_type": "hgv", // Corrigé : 'hgv' au lieu de 'heavy_heavy_hgv'
         "profile_params": {
           "restrictions": {
             "length": vehicle.length,
@@ -30,6 +30,7 @@ class RoutingService {
           }
         }
       },
+      "preference": "fastest",
       "units": "m",
       "language": "fr"
     });
@@ -39,7 +40,8 @@ class RoutingService {
         url,
         headers: {
           'Authorization': _apiKey,
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json; charset=utf-8',
+          'Accept': 'application/json, application/geo+json, application/gpx+xml, text/csv; charset=utf-8',
         },
         body: body,
       );
@@ -47,13 +49,18 @@ class RoutingService {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final List<dynamic> coords = data['features'][0]['geometry']['coordinates'];
-        return coords.map((c) => LatLng(c[1], c[0])).toList();
+        final route = coords.map((c) => LatLng(c[1].toDouble(), c[0].toDouble())).toList();
+        debugPrint('Itinéraire récupéré avec succès : ${route.length} points');
+        return route;
+      } else {
+        debugPrint('Erreur ORS (${response.statusCode}): ${response.body}');
       }
     } catch (e) {
       debugPrint('Erreur Routing: $e');
     }
 
-    return points; // Fallback simple
+    debugPrint('Échec du calcul d\'itinéraire réel. Retour du tracé direct.');
+    return points; // Fallback ligne droite
   }
 
   static Future<LatLng?> geocode(String address) async {

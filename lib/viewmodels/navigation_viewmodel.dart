@@ -8,6 +8,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import '../models/recorded_trip.dart';
 import '../models/vehicle.dart';
+import '../models/planning_activity.dart' hide Waypoint;
 import '../services/routing_service.dart';
 
 class NavigationViewModel extends ChangeNotifier {
@@ -22,6 +23,9 @@ class NavigationViewModel extends ChangeNotifier {
 
   List<LatLng> _plannedRoute = [];
   List<LatLng> get plannedRoute => _plannedRoute;
+
+  List<LatLng> _plannedWaypoints = [];
+  List<LatLng> get plannedWaypoints => _plannedWaypoints;
 
   List<Waypoint> _currentWaypoints = [];
   List<Waypoint> get currentWaypoints => _currentWaypoints;
@@ -122,11 +126,14 @@ class NavigationViewModel extends ChangeNotifier {
 
   void clearPlannedRoute() {
     _plannedRoute = [];
+    _plannedWaypoints = [];
     notifyListeners();
   }
 
   Future<void> calculateMultiStopRoute(List<String> addresses, Vehicle vehicle) async {
     _isCalculating = true;
+    _plannedRoute = [];
+    _plannedWaypoints = [];
     notifyListeners();
 
     List<LatLng> waypoints = [];
@@ -135,7 +142,8 @@ class NavigationViewModel extends ChangeNotifier {
       if (query.isEmpty) continue;
       
       if (query.toLowerCase() == 'ma position') {
-        if (_currentPosition != null) waypoints.add(_currentPosition!);
+        final pos = _currentPosition ?? const LatLng(48.069, 1.325); // Chateaudun en fallback
+        waypoints.add(pos);
         continue;
       }
       
@@ -144,13 +152,35 @@ class NavigationViewModel extends ChangeNotifier {
     }
 
     if (waypoints.length >= 2) {
+      _plannedWaypoints = List.from(waypoints);
+      debugPrint('Calcul multi-étapes pour ${waypoints.length} points...');
       final route = await RoutingService.getHeavyVehicleRoute(
         points: waypoints,
         vehicle: vehicle,
       );
       _plannedRoute = route;
+      debugPrint('Tracé mis à jour avec ${route.length} points');
     }
 
+    _isCalculating = false;
+    notifyListeners();
+  }
+
+  Future<void> calculateRouteFromActivity(PlanningActivity activity) async {
+    if (activity.stops == null || activity.stops!.isEmpty) return;
+    if (activity.vehicle == null) return;
+
+    _isCalculating = true;
+    _plannedRoute = [];
+    _plannedWaypoints = activity.stops!.map((s) => s.location).toList();
+    notifyListeners();
+
+    final route = await RoutingService.getHeavyVehicleRoute(
+      points: _plannedWaypoints,
+      vehicle: activity.vehicle!,
+    );
+
+    _plannedRoute = route;
     _isCalculating = false;
     notifyListeners();
   }
