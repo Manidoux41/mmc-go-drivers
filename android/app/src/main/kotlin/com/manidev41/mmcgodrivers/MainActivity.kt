@@ -1,4 +1,4 @@
-package com.manidev.mmcgodrivers
+package com.manidev41.mmcgodrivers
 
 import io.flutter.embedding.android.FlutterFragmentActivity
 
