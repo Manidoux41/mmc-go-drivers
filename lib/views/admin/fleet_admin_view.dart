@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../viewmodels/login_viewmodel.dart';
 import '../../viewmodels/fleet_admin_viewmodel.dart';
 import '../../viewmodels/vehicle_viewmodel.dart';
 import '../../viewmodels/planning_viewmodel.dart';
+import '../../models/subscription_tier.dart';
 import '../../models/vehicle.dart';
 import '../../models/planning_activity.dart';
 import '../../services/pdf_service.dart';
@@ -89,45 +91,61 @@ class _ManageDriversTabState extends State<_ManageDriversTab> {
   }
 
   void _showAddDriverDialog(BuildContext context) {
+    final loginVM = Provider.of<LoginViewModel>(context, listen: false);
+    final isSuperAdmin = loginVM.currentUser?.isSuperAdmin ?? false;
+
     final usernameController = TextEditingController();
     final fullNameController = TextEditingController();
     final passwordController = TextEditingController();
     
+    // Par défaut, tier professional pour les chauffeurs créés par l'admin
+    // Les super-admins peuvent choisir de créer un compte diamant
+    bool makeDiamond = false;
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Ajouter un conducteur'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(controller: usernameController, decoration: const InputDecoration(labelText: 'Identifiant / Email')),
-            TextField(controller: fullNameController, decoration: const InputDecoration(labelText: 'Nom Complet')),
-            TextField(
-              controller: passwordController, 
-              decoration: const InputDecoration(labelText: 'Mot de passe provisoire'),
-              obscureText: true,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Ajouter un conducteur'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(controller: usernameController, decoration: const InputDecoration(labelText: 'Identifiant / Email')),
+              TextField(controller: fullNameController, decoration: const InputDecoration(labelText: 'Nom Complet')),
+              TextField(
+                controller: passwordController, 
+                decoration: const InputDecoration(labelText: 'Mot de passe provisoire'),
+                obscureText: true,
+              ),
+              if (isSuperAdmin)
+                CheckboxListTile(
+                  title: const Text('Compte Diamant (Entreprise)'),
+                  value: makeDiamond,
+                  onChanged: (val) => setDialogState(() => makeDiamond = val!),
+                ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Annuler')),
+            ElevatedButton(
+              onPressed: () {
+                if (usernameController.text.isNotEmpty && passwordController.text.isNotEmpty) {
+                  Provider.of<FleetAdminViewModel>(context, listen: false).addDriver(
+                    usernameController.text, 
+                    fullNameController.text,
+                    passwordController.text,
+                    tier: makeDiamond ? SubscriptionTier.diamond : SubscriptionTier.professional,
+                  );
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Compte créé avec succès')),
+                  );
+                }
+              },
+              child: const Text('Créer le compte'),
             ),
           ],
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Annuler')),
-          ElevatedButton(
-            onPressed: () {
-              if (usernameController.text.isNotEmpty && passwordController.text.isNotEmpty) {
-                Provider.of<FleetAdminViewModel>(context, listen: false).addDriver(
-                  usernameController.text, 
-                  fullNameController.text,
-                  passwordController.text,
-                );
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Conducteur créé avec succès')),
-                );
-              }
-            },
-            child: const Text('Créer le compte'),
-          ),
-        ],
       ),
     );
   }

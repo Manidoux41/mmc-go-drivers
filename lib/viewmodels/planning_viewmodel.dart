@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/planning_activity.dart';
 import '../models/vehicle.dart';
 import '../services/supabase_service.dart';
@@ -14,6 +15,7 @@ enum PlanningViewMode { day, week, month }
 class PlanningViewModel extends ChangeNotifier {
   final VehicleViewModel vehicleViewModel;
   String? _currentDriverId;
+  SupabaseClient? _customClient; // Client spécifique pour Diamant décentralisé
   
   DateTime _selectedDate = DateTime.now();
   PlanningViewMode _viewMode = PlanningViewMode.day;
@@ -28,6 +30,16 @@ class PlanningViewModel extends ChangeNotifier {
   List<PlanningActivity> get allActivities => _activities;
   bool get isLoading => _isLoading;
 
+  SupabaseClient get _db => _customClient ?? SupabaseService.client;
+
+  void setCustomClient(String? url, String? anonKey) {
+    if (url != null && anonKey != null) {
+      _customClient = SupabaseClient(url, anonKey);
+    } else {
+      _customClient = null;
+    }
+  }
+
   void setCurrentDriver(String? driverId) {
     _currentDriverId = driverId;
     fetchActivities();
@@ -38,11 +50,12 @@ class PlanningViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
-      var query = SupabaseService.client.from('activities').select();
+      var query = _db.from('activities').select();
       
       if (_currentDriverId != null) {
         query = query.eq('driver_id', _currentDriverId!);
       }
+// ...
 
       final data = await query;
       
@@ -109,7 +122,7 @@ class PlanningViewModel extends ChangeNotifier {
 
   Future<void> addActivity(PlanningActivity activity) async {
     try {
-      await SupabaseService.client
+      await _db
           .from('activities')
           .insert(activity.toJson());
       
@@ -121,7 +134,7 @@ class PlanningViewModel extends ChangeNotifier {
 
   Future<void> removeActivity(String activityId) async {
     try {
-      await SupabaseService.client
+      await _db
           .from('activities')
           .delete()
           .eq('id', activityId);

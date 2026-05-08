@@ -5,12 +5,16 @@ class User {
   final String username; // Email ou identifiant
   final String? fullName;
   SubscriptionTier tier;
+  final String? customSupabaseUrl;
+  final String? customSupabaseAnonKey;
 
   User({
     required this.id,
     required this.username,
     this.fullName,
     this.tier = SubscriptionTier.free,
+    this.customSupabaseUrl,
+    this.customSupabaseAnonKey,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -19,6 +23,8 @@ class User {
       username: json['username'] ?? '',
       fullName: json['full_name'],
       tier: _tierFromString(json['tier']),
+      customSupabaseUrl: json['custom_supabase_url'],
+      customSupabaseAnonKey: json['custom_supabase_anon_key'],
     );
   }
 
@@ -38,5 +44,10 @@ class User {
       'full_name': fullName,
       'tier': tier.name.toLowerCase(),
     };
+  }
+
+  bool get isSuperAdmin {
+    return username == 'manfredparbatia@gmail.com' || 
+           username == 'michael.baze1987@gmail.com';
   }
 }

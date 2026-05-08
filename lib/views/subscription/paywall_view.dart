@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../models/subscription_tier.dart';
 import '../../viewmodels/subscription_viewmodel.dart';
 import '../../viewmodels/login_viewmodel.dart';
+import '../../models/user.dart';
 import '../../services/email_service.dart';
 import '../dashboard/dashboard_view.dart';
 
@@ -89,6 +90,8 @@ class PaywallView extends StatelessWidget {
   }
 
   void _showSubscriptionProcess(BuildContext context, SubscriptionTier tier) {
+    final user = Provider.of<LoginViewModel>(context, listen: false).currentUser;
+
     if (tier == SubscriptionTier.free) {
       Navigator.pushAndRemoveUntil(
         context,
@@ -99,7 +102,12 @@ class PaywallView extends StatelessWidget {
     }
 
     if (tier == SubscriptionTier.diamond) {
-      _showDiamondContactForm(context);
+      if (user?.isSuperAdmin ?? false) {
+        // Pour les super-admins, activation directe du Diamant
+        _PaymentSimulationFormState.activateDiamond(context, user!);
+      } else {
+        _showDiamondContactForm(context);
+      }
       return;
     }
 
@@ -267,6 +275,21 @@ class _PaymentSimulationFormState extends State<_PaymentSimulationForm> {
   final _cvcController = TextEditingController(text: '123');
   bool _useRealStripe = false;
 
+  static Future<void> activateDiamond(BuildContext context, User user) async {
+    final subVM = Provider.of<SubscriptionViewModel>(context, listen: false);
+    final success = await subVM.subscribe(SubscriptionTier.diamond, useStripe: false);
+    if (success && context.mounted) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => const DashboardView()),
+        (route) => false,
+      );
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Accès Super-Admin Diamant Activé !')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final viewModel = Provider.of<SubscriptionViewModel>(context);
@@ -283,7 +306,6 @@ class _PaymentSimulationFormState extends State<_PaymentSimulationForm> {
         Text('Abonnement : ${widget.tier.displayName} - ${widget.tier.price}€/mois'),
         const Divider(height: 30),
         
-        // Sélecteur de mode de paiement
         SwitchListTile(
           title: const Text('Utiliser Stripe (Fenêtre native)'),
           subtitle: const Text('Nécessite des clés API valides'),

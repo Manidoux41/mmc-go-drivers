@@ -18,6 +18,9 @@ class NavigationViewModel extends ChangeNotifier {
   bool _isCalculating = false;
   bool get isCalculating => _isCalculating;
 
+  bool _isFollowing = false;
+  bool get isFollowing => _isFollowing;
+
   List<LatLng> _recordedRoute = [];
   List<LatLng> get recordedRoute => _recordedRoute;
 
@@ -39,6 +42,16 @@ class NavigationViewModel extends ChangeNotifier {
 
   NavigationViewModel() {
     _initLocation();
+  }
+
+  void toggleFollowing() {
+    _isFollowing = !_isFollowing;
+    notifyListeners();
+  }
+
+  void setFollowing(bool value) {
+    _isFollowing = value;
+    notifyListeners();
   }
 
   Future<void> _initLocation() async {

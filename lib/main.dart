@@ -8,6 +8,7 @@ import 'viewmodels/vehicle_viewmodel.dart';
 import 'viewmodels/document_viewmodel.dart';
 import 'viewmodels/subscription_viewmodel.dart';
 import 'viewmodels/fleet_admin_viewmodel.dart';
+import 'viewmodels/super_admin_viewmodel.dart';
 import 'services/stripe_service.dart';
 import 'services/supabase_service.dart';
 import 'views/login/login_view.dart';
@@ -44,6 +45,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => DocumentViewModel()),
         ChangeNotifierProvider(create: (_) => SubscriptionViewModel()),
         ChangeNotifierProvider(create: (_) => FleetAdminViewModel()),
+        ChangeNotifierProvider(create: (_) => SuperAdminViewModel()),
       ],
       child: const MyApp(),
     ),

@@ -114,10 +114,12 @@ class LoginView extends StatelessWidget {
 
                               // Synchronisation avec le PlanningViewModel pour le calendrier individuel
                               final planningVM = Provider.of<PlanningViewModel>(context, listen: false);
+                              planningVM.setCustomClient(viewModel.currentUser!.customSupabaseUrl, viewModel.currentUser!.customSupabaseAnonKey);
                               planningVM.setCurrentDriver(viewModel.currentUser!.id);
 
                               // Chargement initial des véhicules
                               final vehicleVM = Provider.of<VehicleViewModel>(context, listen: false);
+                              vehicleVM.setCustomClient(viewModel.currentUser!.customSupabaseUrl, viewModel.currentUser!.customSupabaseAnonKey);
                               vehicleVM.fetchVehicles();
 
                               // Redirection systématique vers le Dashboard pour les utilisateurs déjà inscrits

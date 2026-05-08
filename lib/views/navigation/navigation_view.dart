@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_compass/flutter_compass.dart';
 import '../../viewmodels/navigation_viewmodel.dart';
 import '../../viewmodels/vehicle_viewmodel.dart';
 import '../../models/planning_activity.dart' hide Waypoint;
@@ -13,6 +14,7 @@ import '../login/login_view.dart';
 import '../dashboard/dashboard_view.dart';
 import '../subscription/paywall_view.dart';
 import '../about/about_view.dart';
+import 'dart:math' as math;
 
 class NavigationView extends StatefulWidget {
   final PlanningActivity? activity;
@@ -57,6 +59,14 @@ class _NavigationViewState extends State<NavigationView> {
     final loginVM = Provider.of<LoginViewModel>(context);
     final user = loginVM.currentUser;
     final tier = user?.tier ?? SubscriptionTier.free;
+
+    // Écouter les changements de position pour le mode GPS
+    final navVM = Provider.of<NavigationViewModel>(context);
+    if (navVM.isFollowing && navVM.currentPosition != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _mapController.move(navVM.currentPosition!, _mapController.camera.zoom);
+      });
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -192,6 +202,11 @@ class _NavigationViewState extends State<NavigationView> {
                 options: MapOptions(
                   initialCenter: widget.activity?.stops?.first.location ?? viewModel.currentPosition ?? const LatLng(48.069, 1.325),
                   initialZoom: 13.0,
+                  onPositionChanged: (MapCamera position, bool hasGesture) {
+                    if (hasGesture && viewModel.isFollowing) {
+                      viewModel.setFollowing(false);
+                    }
+                  },
                   onLongPress: (tapPosition, point) {
                     if (widget.activity?.vehicle != null) {
                       _showRouteConfirmation(context, viewModel, point, widget.activity!.vehicle!);
@@ -211,12 +226,7 @@ class _NavigationViewState extends State<NavigationView> {
                   ),
                   PolylineLayer(
                     polylines: [
-                      if (widget.activity?.stops != null && widget.activity!.stops!.isNotEmpty)
-                        Polyline(
-                          points: widget.activity!.stops!.map((s) => s.location).toList(),
-                          strokeWidth: 5,
-                          color: Colors.blue.withOpacity(0.7),
-                        ),
+                      // La ligne bleue (directe) est supprimée car elle est remplacée par le tracé orange réel
                       if (viewModel.recordedRoute.isNotEmpty)
                         Polyline(
                           points: viewModel.recordedRoute,
@@ -226,7 +236,7 @@ class _NavigationViewState extends State<NavigationView> {
                       if (viewModel.plannedRoute.isNotEmpty)
                         Polyline(
                           points: viewModel.plannedRoute,
-                          strokeWidth: 5,
+                          strokeWidth: 6,
                           color: Colors.orange,
                         ),
                     ],
@@ -291,28 +301,51 @@ class _NavigationViewState extends State<NavigationView> {
                 ),
               if (_showRoutePanel)
                 _buildRoutePanel(context, viewModel, widget.activity?.vehicle),
-              // Affichage des contraintes véhicule
-              if (widget.activity?.vehicle != null)
-                Positioned(
-                  top: 10,
-                  left: 10,
-                  child: Card(
-                    color: Colors.white.withOpacity(0.9),
-                    child: Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Véhicule: ${widget.activity!.vehicle!.registration}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                          Text('Hauteur: ${widget.activity!.vehicle!.height}m | PTAC: ${widget.activity!.vehicle!.ptac}t', style: const TextStyle(fontSize: 12)),
-                          const Text('⚠️ Itinéraire optimisé Poids-Lourds', style: TextStyle(fontSize: 11, color: Colors.orange, fontWeight: FontWeight.bold)),
-                        ],
+                  // Affichage des contraintes véhicule
+                  if (widget.activity?.vehicle != null)
+                    Positioned(
+                      top: 10,
+                      left: 10,
+                      child: Card(
+                        color: Colors.white.withOpacity(0.9),
+                        child: Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Véhicule: ${widget.activity!.vehicle!.registration}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                              Text('Hauteur: ${widget.activity!.vehicle!.height}m | PTAC: ${widget.activity!.vehicle!.ptac}t', style: const TextStyle(fontSize: 12)),
+                              const Text('⚠️ Itinéraire optimisé Poids-Lourds', style: TextStyle(fontSize: 11, color: Colors.orange, fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  
+                  // Boussole
+                  Positioned(
+                    top: 10,
+                    right: 10,
+                    child: _buildCompass(),
+                  ),
+
+                  // Bouton Recentrer / Follow GPS
+                  Positioned(
+                    bottom: viewModel.isRecording ? 120 : 100,
+                    right: 20,
+                    child: FloatingActionButton(
+                      heroTag: 'btn_follow',
+                      onPressed: () => viewModel.toggleFollowing(),
+                      backgroundColor: viewModel.isFollowing ? Theme.of(context).primaryColor : Colors.white,
+                      child: Icon(
+                        viewModel.isFollowing ? Icons.gps_fixed : Icons.gps_not_fixed,
+                        color: viewModel.isFollowing ? Colors.white : Colors.grey,
                       ),
                     ),
                   ),
-                ),
-              Positioned(
-                bottom: 20,
+
+                  Positioned(
+                    bottom: 20,
                 left: 20,
                 right: 20,
                 child: Column(
@@ -608,6 +641,37 @@ class _NavigationViewState extends State<NavigationView> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildCompass() {
+    return StreamBuilder<CompassEvent>(
+      stream: FlutterCompass.events,
+      builder: (context, snapshot) {
+        if (snapshot.hasError) return const SizedBox.shrink();
+        
+        double? direction = snapshot.data?.heading;
+        if (direction == null) return const SizedBox.shrink();
+
+        return GestureDetector(
+          onTap: () {
+            // Optionnel : Recentrer la carte au Nord ?
+            _mapController.rotate(0);
+          },
+          child: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+              boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4)],
+            ),
+            child: Transform.rotate(
+              angle: (direction * (math.pi / 180) * -1),
+              child: const Icon(Icons.navigation, color: Colors.red, size: 30),
+            ),
+          ),
+        );
+      },
     );
   }
 }

@@ -8,6 +8,7 @@ import '../contact/contact_view.dart';
 import '../documents/document_view.dart';
 import '../subscription/paywall_view.dart';
 import '../admin/fleet_admin_view.dart';
+import '../admin/super_admin_view.dart';
 import '../../viewmodels/login_viewmodel.dart';
 import '../../viewmodels/subscription_viewmodel.dart';
 import '../../models/subscription_tier.dart';
@@ -111,6 +112,18 @@ class DashboardView extends StatelessWidget {
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const FleetAdminView()),
+              ),
+            ),
+          if (user?.isSuperAdmin ?? false)
+            _buildToolCard(
+              context,
+              'Super Admin',
+              Icons.security,
+              Colors.black87,
+              isLocked: false,
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const SuperAdminView()),
               ),
             ),
         ],

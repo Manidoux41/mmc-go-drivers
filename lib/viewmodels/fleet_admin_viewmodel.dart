@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/user.dart';
+import '../models/subscription_tier.dart';
 import '../services/supabase_service.dart';
 
 class FleetAdminViewModel extends ChangeNotifier {
@@ -28,15 +29,15 @@ class FleetAdminViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> addDriver(String email, String fullName, String password) async {
+  Future<void> addDriver(String email, String fullName, String password, {SubscriptionTier tier = SubscriptionTier.professional}) async {
     try {
-      // Pour Supabase, l'admin peut créer des utilisateurs via auth.signUp
-      // mais en général c'est mieux via une Edge Function si on veut gérer les mots de passe.
-      // Pour ce prototype, on simule l'inscription.
       await SupabaseService.client.auth.signUp(
         email: email,
         password: password,
-        data: {'full_name': fullName},
+        data: {
+          'full_name': fullName,
+          'tier': tier.name.toLowerCase(),
+        },
       );
       
       await fetchDrivers();

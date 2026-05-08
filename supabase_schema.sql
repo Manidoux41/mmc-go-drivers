@@ -4,6 +4,8 @@ CREATE TABLE profiles (
   username TEXT UNIQUE,
   full_name TEXT,
   tier TEXT DEFAULT 'free', -- 'free', 'expert', 'professional', 'diamond'
+  custom_supabase_url TEXT, -- Pour les clients Diamant décentralisés
+  custom_supabase_anon_key TEXT, -- Pour les clients Diamant décentralisés
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -39,7 +41,17 @@ CREATE TABLE activities (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 4. Bucket pour les plannings PDF
+-- 4. Table des Demandes Forfait Diamant (Contact)
+CREATE TABLE contact_requests (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  sender_email TEXT NOT NULL,
+  sender_name TEXT,
+  message TEXT,
+  status TEXT DEFAULT 'pending', -- 'pending', 'processed'
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 5. Bucket pour les plannings PDF
 -- (À exécuter si le bucket n'existe pas déjà via l'interface Supabase)
 -- INSERT INTO storage.buckets (id, name, public) VALUES ('plannings', 'plannings', true);
 

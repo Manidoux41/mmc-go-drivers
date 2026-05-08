@@ -4,6 +4,8 @@ import 'package:http/http.dart' as http;
 
 import '../config/secrets.dart';
 
+import '../services/supabase_service.dart';
+
 class EmailService {
   static const String _apiKey = AppSecrets.resendApiKey;
   static const String _adminEmail = 'lherissondu41@gmail.com';
@@ -13,6 +15,18 @@ class EmailService {
     required String senderName,
     required String message,
   }) async {
+    // 1. Sauvegarde dans Supabase pour le tableau de bord Super-Admin
+    try {
+      await SupabaseService.client.from('contact_requests').insert({
+        'sender_email': senderEmail,
+        'sender_name': senderName,
+        'message': message,
+      });
+    } catch (e) {
+      debugPrint('Erreur sauvegarde requête Supabase : $e');
+    }
+
+    // 2. Envoi de l'email via Resend
     final url = Uri.parse('https://api.resend.com/emails');
 
     final body = jsonEncode({
