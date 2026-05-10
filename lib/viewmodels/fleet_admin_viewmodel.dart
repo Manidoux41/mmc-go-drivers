@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' hide User;
 import '../models/user.dart';
 import '../models/subscription_tier.dart';
 import '../services/supabase_service.dart';
@@ -6,12 +7,24 @@ import '../services/supabase_service.dart';
 class FleetAdminViewModel extends ChangeNotifier {
   List<User> _drivers = [];
   bool _isLoading = false;
+  SupabaseClient? _customClient;
 
   List<User> get drivers => _drivers;
   bool get isLoading => _isLoading;
 
+  SupabaseClient get _db => _customClient ?? SupabaseService.client;
+
+  void setCustomClient(String? url, String? anonKey) {
+    if (url != null && anonKey != null) {
+      _customClient = SupabaseClient(url, anonKey);
+    } else {
+      _customClient = null;
+    }
+  }
+
   void clear() {
     _drivers = [];
+    _customClient = null;
     notifyListeners();
   }
 
@@ -20,7 +33,7 @@ class FleetAdminViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final data = await SupabaseService.client
+      final data = await _db
           .from('profiles')
           .select()
           .order('full_name');
@@ -40,7 +53,8 @@ class FleetAdminViewModel extends ChangeNotifier {
     String? customKey,
   }) async {
     try {
-      await SupabaseService.client.auth.signUp(
+      // 1. Création du compte Auth dans le système central (pour le login)
+      final AuthResponse res = await SupabaseService.client.auth.signUp(
         email: email,
         password: password,
         data: {
@@ -51,6 +65,16 @@ class FleetAdminViewModel extends ChangeNotifier {
         },
       );
       
+      // 2. Si on est sur une base décentralisée (Diamond), on enregistre aussi le profil localement
+      if (_customClient != null && res.user != null) {
+        await _customClient!.from('profiles').insert({
+          'id': res.user!.id,
+          'username': email,
+          'full_name': fullName,
+          'tier': tier.name.toLowerCase(),
+        });
+      }
+      
       await fetchDrivers();
     } catch (e) {
       debugPrint("Erreur add driver : ${e.toString()}");
@@ -59,9 +83,7 @@ class FleetAdminViewModel extends ChangeNotifier {
 
   Future<void> removeDriver(String driverId) async {
     try {
-      // Suppression du profil (la cascade supprimera l'auth.user si configuré, 
-      // sinon il faut une Edge Function)
-      await SupabaseService.client
+      await _db
           .from('profiles')
           .delete()
           .eq('id', driverId);
@@ -71,8 +93,4 @@ class FleetAdminViewModel extends ChangeNotifier {
       debugPrint("Erreur remove driver : ${e.toString()}");
     }
   }
-
-  // Ces méthodes ne sont plus nécessaires avec la vraie Auth Supabase
-  bool validateCredentials(String username, String password) => false;
-  User? getDriver(String username) => null;
 }

@@ -4,6 +4,7 @@ import '../models/user.dart';
 import '../services/supabase_service.dart';
 import 'planning_viewmodel.dart';
 import 'vehicle_viewmodel.dart';
+import 'fleet_admin_viewmodel.dart';
 
 class LoginViewModel extends ChangeNotifier {
   final TextEditingController usernameController = TextEditingController();
@@ -123,9 +124,11 @@ class LoginViewModel extends ChangeNotifier {
         // Re-synchronisation des clients décentralisés si passage en Diamant
         final planningVM = Provider.of<PlanningViewModel>(context, listen: false);
         final vehicleVM = Provider.of<VehicleViewModel>(context, listen: false);
+        final fleetVM = Provider.of<FleetAdminViewModel>(context, listen: false);
         
         planningVM.setCustomClient(_currentUser!.customSupabaseUrl, _currentUser!.customSupabaseAnonKey);
         vehicleVM.setCustomClient(_currentUser!.customSupabaseUrl, _currentUser!.customSupabaseAnonKey);
+        fleetVM.setCustomClient(_currentUser!.customSupabaseUrl, _currentUser!.customSupabaseAnonKey);
       }
 
       notifyListeners();

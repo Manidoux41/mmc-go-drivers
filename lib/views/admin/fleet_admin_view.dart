@@ -7,6 +7,7 @@ import '../../viewmodels/planning_viewmodel.dart';
 import '../../models/subscription_tier.dart';
 import '../../models/vehicle.dart';
 import '../../models/planning_activity.dart';
+import '../../models/user.dart';
 import '../../services/pdf_service.dart';
 import 'package:intl/intl.dart';
 
@@ -137,13 +138,15 @@ class _ManageDriversTabState extends State<_ManageDriversTab> {
             ElevatedButton(
               onPressed: () {
                 if (usernameController.text.isNotEmpty && passwordController.text.isNotEmpty) {
+                  final admin = Provider.of<LoginViewModel>(context, listen: false).currentUser;
+                  
                   Provider.of<FleetAdminViewModel>(context, listen: false).addDriver(
                     usernameController.text, 
                     fullNameController.text,
                     passwordController.text,
                     tier: makeDiamond ? SubscriptionTier.diamond : SubscriptionTier.professional,
-                    customUrl: makeDiamond ? urlController.text : null,
-                    customKey: makeDiamond ? keyController.text : null,
+                    customUrl: makeDiamond ? urlController.text : admin?.customSupabaseUrl,
+                    customKey: makeDiamond ? keyController.text : admin?.customSupabaseAnonKey,
                   );
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -389,7 +392,7 @@ class _DailyOverviewTable extends StatelessWidget {
             const DataColumn(label: Text('Conducteur', style: TextStyle(fontWeight: FontWeight.bold))),
             const DataColumn(label: Text('Missions du jour', style: TextStyle(fontWeight: FontWeight.bold))),
           ],
-          rows: fleetVM.drivers.map((driver) {
+          rows: fleetVM.drivers.map<DataRow>((User driver) {
             final activities = planningVM.getActivitiesForDriver(driver.id, date);
             return DataRow(cells: [
               DataCell(Text(driver.fullName ?? driver.username, style: const TextStyle(fontWeight: FontWeight.bold))),
@@ -443,7 +446,7 @@ class _WeeklyOverviewTable extends StatelessWidget {
             const DataColumn(label: Text('Conducteur', style: TextStyle(fontWeight: FontWeight.bold))),
             ...days.map((d) => DataColumn(label: Text(DateFormat('EEE dd/MM').format(d), style: const TextStyle(fontWeight: FontWeight.bold)))),
           ],
-          rows: fleetVM.drivers.map((driver) {
+          rows: fleetVM.drivers.map<DataRow>((User driver) {
             return DataRow(cells: [
               DataCell(Text(driver.fullName ?? driver.username, style: const TextStyle(fontWeight: FontWeight.bold))),
               ...days.map((d) {
@@ -476,7 +479,7 @@ class _WeeklyOverviewTable extends StatelessWidget {
   }
 }
 
-void _showDayEditDialog(BuildContext context, dynamic driver, DateTime date, List<PlanningActivity> activities) {
+void _showDayEditDialog(BuildContext context, User driver, DateTime date, List<PlanningActivity> activities) {
   showDialog(
     context: context,
     builder: (context) => AlertDialog(
@@ -523,7 +526,7 @@ void _showDayEditDialog(BuildContext context, dynamic driver, DateTime date, Lis
   );
 }
 
-void _showAddMissionDialog(BuildContext context, DateTime date, dynamic selectedDriver) {
+void _showAddMissionDialog(BuildContext context, DateTime date, User selectedDriver) {
   final titleController = TextEditingController();
   final departureController = TextEditingController();
   final arrivalController = TextEditingController();
