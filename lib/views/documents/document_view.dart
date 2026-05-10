@@ -1,4 +1,5 @@
-import 'dart:io';
+import 'package:flutter/foundation.dart';
+import 'package:universal_io/io.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
@@ -71,12 +72,14 @@ class DocumentView extends StatelessWidget {
                 if (hasFile)
                   ClipRRect(
                     borderRadius: BorderRadius.circular(8),
-                    child: Image.file(
-                      File(doc.filePath!),
-                      height: 200,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                    ),
+                    child: kIsWeb 
+                      ? Image.network(doc.filePath!, height: 200, width: double.infinity, fit: BoxFit.cover)
+                      : Image.file(
+                          File(doc.filePath!),
+                          height: 200,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                        ),
                   )
                 else
                   Container(

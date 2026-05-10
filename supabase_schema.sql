@@ -60,9 +60,17 @@ ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE vehicles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE activities ENABLE ROW LEVEL SECURITY;
 
--- Profils : visibles par tous les authentifiés, modifiables par le propriétaire
+-- Profils : visibles par tous, modifiables par le proprio OU par les super-admins
 CREATE POLICY "Public profiles are viewable by everyone" ON profiles FOR SELECT USING (true);
 CREATE POLICY "Users can update own profile" ON profiles FOR UPDATE USING (auth.uid() = id);
+
+-- Nouvelle méthode basée sur l'ID utilisateur (UUID) récupéré depuis l'auth
+-- Remplacez les UUID_ADMIN_X par vos vrais ID récupérés dans Auth > Users
+CREATE POLICY "Super-admins can update any profile" ON profiles FOR UPDATE USING (
+  auth.uid() IN (
+    SELECT id FROM profiles WHERE username IN ('manfredparbatia@gmail.com', 'michael.baze1987@gmail.com')
+  )
+);
 
 -- Véhicules : visibles par tous les authentifiés
 CREATE POLICY "Vehicles are viewable by authenticated users" ON vehicles FOR SELECT USING (auth.role() = 'authenticated');
@@ -82,8 +90,15 @@ CREATE POLICY "Admins can manage all activities" ON activities FOR ALL USING (
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger AS $$
 BEGIN
-  INSERT INTO public.profiles (id, username, full_name, tier)
-  VALUES (new.id, new.email, new.raw_user_meta_data->>'full_name', 'free');
+  INSERT INTO public.profiles (id, username, full_name, tier, custom_supabase_url, custom_supabase_anon_key)
+  VALUES (
+    new.id,
+    new.email,
+    new.raw_user_meta_data->>'full_name',
+    COALESCE(new.raw_user_meta_data->>'tier', 'free'),
+    new.raw_user_meta_data->>'custom_supabase_url',
+    new.raw_user_meta_data->>'custom_supabase_anon_key'
+  );
   RETURN new;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;

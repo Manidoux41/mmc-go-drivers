@@ -1,4 +1,5 @@
-import 'dart:io';
+import 'package:flutter/foundation.dart';
+import 'package:universal_io/io.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:latlong2/latlong.dart';
@@ -43,6 +44,13 @@ class PlanningViewModel extends ChangeNotifier {
   void setCurrentDriver(String? driverId) {
     _currentDriverId = driverId;
     fetchActivities();
+  }
+
+  void clear() {
+    _activities = [];
+    _currentDriverId = null;
+    _customClient = null;
+    notifyListeners();
   }
 
   Future<void> fetchActivities() async {
@@ -90,26 +98,32 @@ class PlanningViewModel extends ChangeNotifier {
       notifyListeners();
 
       try {
+        if (kIsWeb) {
+          debugPrint('L\'envoi de planning photo n\'est pas encore disponible sur le Web.');
+          return;
+        }
         // 1. Image -> PDF
         final pdfFile = await PdfService.imageToPdf(File(pickedFile.path));
 
-        // 2. Upload to Storage
-        final fileName = 'planning_${_currentDriverId}_${date.millisecondsSinceEpoch}.pdf';
-        final storagePath = await StorageService.uploadPlanningPdf(pdfFile, fileName);
+        if (pdfFile != null) {
+          // 2. Upload to Storage
+          final fileName = 'planning_${_currentDriverId}_${date.millisecondsSinceEpoch}.pdf';
+          final storagePath = await StorageService.uploadPlanningPdf(pdfFile, fileName);
 
-        if (storagePath != null) {
-          // 3. Create Activity
-          final activity = PlanningActivity(
-            id: '', // Supabase générera l'id
-            title: 'Planning Photo du ${date.day}/${date.month}',
-            type: ActivityType.photo_planning,
-            startTime: date.copyWith(hour: 8),
-            endTime: date.copyWith(hour: 18),
-            driverId: _currentDriverId,
-            filePath: storagePath,
-          );
+          if (storagePath != null) {
+            // 3. Create Activity
+            final activity = PlanningActivity(
+              id: '', // Supabase générera l'id
+              title: 'Planning Photo du ${date.day}/${date.month}',
+              type: ActivityType.photo_planning,
+              startTime: date.copyWith(hour: 8),
+              endTime: date.copyWith(hour: 18),
+              driverId: _currentDriverId,
+              filePath: storagePath,
+            );
 
-          await addActivity(activity);
+            await addActivity(activity);
+          }
         }
       } catch (e) {
         debugPrint("Erreur upload photo planning : $e");

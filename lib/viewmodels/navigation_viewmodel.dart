@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
+import 'package:universal_io/io.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
@@ -123,6 +124,10 @@ class NavigationViewModel extends ChangeNotifier {
   }
 
   Future<void> shareTrip(RecordedTrip trip) async {
+    if (kIsWeb) {
+      debugPrint('Le partage de fichier n\'est pas supporté sur le Web.');
+      return;
+    }
     final jsonString = jsonEncode(trip.toJson());
     final directory = await getTemporaryDirectory();
     final file = File('${directory.path}/${trip.name}.json');
@@ -200,6 +205,10 @@ class NavigationViewModel extends ChangeNotifier {
 
   Future<void> exportToKML() async {
     if (_plannedRoute.isEmpty) return;
+    if (kIsWeb) {
+      debugPrint('L\'export KML n\'est pas encore supporté sur le Web.');
+      return;
+    }
 
     String kml = '''<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2">

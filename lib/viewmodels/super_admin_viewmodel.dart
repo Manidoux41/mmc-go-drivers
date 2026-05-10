@@ -12,6 +12,12 @@ class SuperAdminViewModel extends ChangeNotifier {
   List<Map<String, dynamic>> get contactRequests => _contactRequests;
   bool get isLoading => _isLoading;
 
+  void clear() {
+    _allUsers = [];
+    _contactRequests = [];
+    notifyListeners();
+  }
+
   Future<void> fetchAllData() async {
     _isLoading = true;
     notifyListeners();
@@ -39,24 +45,37 @@ class SuperAdminViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> updateUserTier(String userId, SubscriptionTier tier, {String? customUrl, String? customKey}) async {
+  Future<bool> updateUserTier(String userId, SubscriptionTier tier, {String? customUrl, String? customKey}) async {
     try {
-      Map<String, dynamic> updates = {
-        'tier': tier.name.toLowerCase(),
+      final String tierString = tier.name;
+      
+      final Map<String, dynamic> updates = {
+        'tier': tierString,
+        'custom_supabase_url': customUrl?.trim(),
+        'custom_supabase_anon_key': customKey?.trim(),
+        'updated_at': DateTime.now().toIso8601String(),
       };
       
-      if (tier == SubscriptionTier.diamond) {
-        updates['custom_supabase_url'] = customUrl;
-        updates['custom_supabase_anon_key'] = customKey;
-      }
+      debugPrint(">>> SYNCHRO DEBUT : Mise à jour $userId vers $tierString");
 
-      await SupabaseService.client
+      final response = await SupabaseService.client
           .from('profiles')
           .update(updates)
-          .eq('id', userId);
+          .eq('id', userId)
+          .select();
+      
+      if (response == null || (response as List).isEmpty) {
+        debugPrint(">>> SYNCHRO ECHEC : Aucun retour de Supabase. Probablement bloqué par RLS.");
+        return false;
+      }
+
+      debugPrint(">>> SYNCHRO SUCCES : Supabase a confirmé l'update : ${response[0]}");
+      
       await fetchAllData();
+      return true;
     } catch (e) {
-      debugPrint("Erreur update tier : $e");
+      debugPrint(">>> SYNCHRO ERREUR FATALE : $e");
+      return false;
     }
   }
 

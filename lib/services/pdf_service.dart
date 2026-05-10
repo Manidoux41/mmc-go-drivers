@@ -1,4 +1,5 @@
-import 'dart:io';
+import 'package:flutter/foundation.dart';
+import 'package:universal_io/io.dart';
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -7,7 +8,9 @@ import 'package:printing/printing.dart';
 import '../models/planning_activity.dart';
 
 class PdfService {
-  static Future<File> imageToPdf(File imageFile) async {
+  static Future<File?> imageToPdf(File imageFile) async {
+    if (kIsWeb) return null;
+
     final pdf = pw.Document();
     final image = pw.MemoryImage(imageFile.readAsBytesSync());
 

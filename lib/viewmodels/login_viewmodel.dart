@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart' as sb;
+import 'package:provider/provider.dart';
 import '../models/user.dart';
 import '../services/supabase_service.dart';
+import 'planning_viewmodel.dart';
+import 'vehicle_viewmodel.dart';
 
 class LoginViewModel extends ChangeNotifier {
   final TextEditingController usernameController = TextEditingController();
@@ -21,6 +23,7 @@ class LoginViewModel extends ChangeNotifier {
     final session = SupabaseService.client.auth.currentSession;
     if (session != null && session.user != null) {
       await _fetchProfile(session.user.id);
+      // Le Dashboard s'occupera de la synchronisation via refreshProfile au démarrage
       notifyListeners();
     }
   }
@@ -112,17 +115,38 @@ class LoginViewModel extends ChangeNotifier {
     return false;
   }
 
+  Future<void> refreshProfile(BuildContext context) async {
+    if (_currentUser != null) {
+      await _fetchProfile(_currentUser!.id);
+      
+      if (_currentUser != null && context.mounted) {
+        // Re-synchronisation des clients décentralisés si passage en Diamant
+        final planningVM = Provider.of<PlanningViewModel>(context, listen: false);
+        final vehicleVM = Provider.of<VehicleViewModel>(context, listen: false);
+        
+        planningVM.setCustomClient(_currentUser!.customSupabaseUrl, _currentUser!.customSupabaseAnonKey);
+        vehicleVM.setCustomClient(_currentUser!.customSupabaseUrl, _currentUser!.customSupabaseAnonKey);
+      }
+
+      notifyListeners();
+    }
+  }
+
   Future<void> _fetchProfile(String userId) async {
     try {
+      // On sélectionne explicitement tous les champs pour être sûr d'avoir le tier à jour
       final data = await SupabaseService.client
           .from('profiles')
-          .select()
+          .select('id, username, full_name, tier, custom_supabase_url, custom_supabase_anon_key')
           .eq('id', userId)
-          .single();
+          .maybeSingle();
       
-      _currentUser = User.fromJson(data);
+      if (data != null) {
+        _currentUser = User.fromJson(data);
+        debugPrint("Profil chargé : ${_currentUser?.username} - Tier: ${_currentUser?.tier.name}");
+      }
     } catch (e) {
-      debugPrint("Erreur fetch profile : ${e.toString()}");
+      debugPrint("Erreur critique fetch profile : ${e.toString()}");
     }
   }
 

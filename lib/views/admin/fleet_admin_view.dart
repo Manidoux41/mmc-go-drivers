@@ -97,9 +97,9 @@ class _ManageDriversTabState extends State<_ManageDriversTab> {
     final usernameController = TextEditingController();
     final fullNameController = TextEditingController();
     final passwordController = TextEditingController();
+    final urlController = TextEditingController();
+    final keyController = TextEditingController();
     
-    // Par défaut, tier professional pour les chauffeurs créés par l'admin
-    // Les super-admins peuvent choisir de créer un compte diamant
     bool makeDiamond = false;
 
     showDialog(
@@ -107,23 +107,30 @@ class _ManageDriversTabState extends State<_ManageDriversTab> {
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
           title: const Text('Ajouter un conducteur'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(controller: usernameController, decoration: const InputDecoration(labelText: 'Identifiant / Email')),
-              TextField(controller: fullNameController, decoration: const InputDecoration(labelText: 'Nom Complet')),
-              TextField(
-                controller: passwordController, 
-                decoration: const InputDecoration(labelText: 'Mot de passe provisoire'),
-                obscureText: true,
-              ),
-              if (isSuperAdmin)
-                CheckboxListTile(
-                  title: const Text('Compte Diamant (Entreprise)'),
-                  value: makeDiamond,
-                  onChanged: (val) => setDialogState(() => makeDiamond = val!),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(controller: usernameController, decoration: const InputDecoration(labelText: 'Identifiant / Email')),
+                TextField(controller: fullNameController, decoration: const InputDecoration(labelText: 'Nom Complet')),
+                TextField(
+                  controller: passwordController, 
+                  decoration: const InputDecoration(labelText: 'Mot de passe provisoire'),
+                  obscureText: true,
                 ),
-            ],
+                if (isSuperAdmin) ...[
+                  CheckboxListTile(
+                    title: const Text('Compte Diamant (Entreprise)'),
+                    value: makeDiamond,
+                    onChanged: (val) => setDialogState(() => makeDiamond = val!),
+                  ),
+                  if (makeDiamond) ...[
+                    TextField(controller: urlController, decoration: const InputDecoration(labelText: 'URL Supabase Client')),
+                    TextField(controller: keyController, decoration: const InputDecoration(labelText: 'Clé Anon Client')),
+                  ],
+                ],
+              ],
+            ),
           ),
           actions: [
             TextButton(onPressed: () => Navigator.pop(context), child: const Text('Annuler')),
@@ -135,6 +142,8 @@ class _ManageDriversTabState extends State<_ManageDriversTab> {
                     fullNameController.text,
                     passwordController.text,
                     tier: makeDiamond ? SubscriptionTier.diamond : SubscriptionTier.professional,
+                    customUrl: makeDiamond ? urlController.text : null,
+                    customKey: makeDiamond ? keyController.text : null,
                   );
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(

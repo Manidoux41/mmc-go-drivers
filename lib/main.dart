@@ -15,41 +15,53 @@ import 'views/login/login_view.dart';
 import 'views/navigation/navigation_view.dart';
 
 void main() async {
-  // Nécessaire pour initialiser le formatage des dates en français
-  WidgetsFlutterBinding.ensureInitialized();
-  await initializeDateFormatting('fr_FR', null);
-  
-  // Initialisation de Supabase
+  try {
+    WidgetsFlutterBinding.ensureInitialized();
+    
+    // On initialise d'abord les formats de date
+    await initializeDateFormatting('fr_FR', null);
+    
+    // Initialisation des services avec gestion d'erreur isolée
+    await _initServices();
+
+    final vehicleVM = VehicleViewModel();
+    
+    runApp(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider(create: (_) => LoginViewModel()),
+          ChangeNotifierProvider(create: (_) => vehicleVM),
+          ChangeNotifierProvider(create: (_) => PlanningViewModel(vehicleViewModel: vehicleVM)),
+          ChangeNotifierProvider(create: (_) => NavigationViewModel()),
+          ChangeNotifierProvider(create: (_) => DocumentViewModel()),
+          ChangeNotifierProvider(create: (_) => SubscriptionViewModel()),
+          ChangeNotifierProvider(create: (_) => FleetAdminViewModel()),
+          ChangeNotifierProvider(create: (_) => SuperAdminViewModel()),
+        ],
+        child: const MyApp(),
+      ),
+    );
+  } catch (e) {
+    debugPrint('ERREUR FATALE AU DÉMARRAGE : $e');
+    // On lance quand même l'app en mode dégradé si possible
+    runApp(const MaterialApp(home: Scaffold(body: Center(child: Text('Erreur de chargement. Veuillez rafraîchir.')))));
+  }
+}
+
+Future<void> _initServices() async {
+  // Supabase
   try {
     await SupabaseService.init();
   } catch (e) {
-    debugPrint('Erreur Supabase : ${e.toString()}');
+    debugPrint('Supabase Error: $e');
   }
 
-  // Initialisation de Stripe (pourrait échouer si pas de clés, donc on catch)
+  // Stripe
   try {
     await StripeService.init();
   } catch (e) {
-    debugPrint('Stripe non initialisé : ${e.toString()}');
+    debugPrint('Stripe Error: $e');
   }
-
-  final vehicleVM = VehicleViewModel();
-  
-  runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => LoginViewModel()),
-        ChangeNotifierProvider(create: (_) => vehicleVM),
-        ChangeNotifierProvider(create: (_) => PlanningViewModel(vehicleViewModel: vehicleVM)),
-        ChangeNotifierProvider(create: (_) => NavigationViewModel()),
-        ChangeNotifierProvider(create: (_) => DocumentViewModel()),
-        ChangeNotifierProvider(create: (_) => SubscriptionViewModel()),
-        ChangeNotifierProvider(create: (_) => FleetAdminViewModel()),
-        ChangeNotifierProvider(create: (_) => SuperAdminViewModel()),
-      ],
-      child: const MyApp(),
-    ),
-  );
 }
 
 class MyApp extends StatelessWidget {
@@ -63,24 +75,18 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF00A859), // Vert MMC Go
+          seedColor: const Color(0xFF00A859),
           primary: const Color(0xFF00A859),
           secondary: const Color(0xFF1B5E20),
-          tertiary: const Color(0xFFFFD600), // Accentuation possible (Jaune "Go")
+          tertiary: const Color(0xFFFFD600),
         ),
         appBarTheme: const AppBarTheme(
           backgroundColor: Color(0xFF00A859),
           foregroundColor: Colors.white,
           elevation: 0,
         ),
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF00A859),
-            foregroundColor: Colors.white,
-          ),
-        ),
       ),
-      home: NavigationView(),
+      home: const NavigationView(),
     );
   }
 }

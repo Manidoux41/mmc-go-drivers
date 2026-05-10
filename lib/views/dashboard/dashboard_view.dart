@@ -11,16 +11,35 @@ import '../admin/fleet_admin_view.dart';
 import '../admin/super_admin_view.dart';
 import '../../viewmodels/login_viewmodel.dart';
 import '../../viewmodels/subscription_viewmodel.dart';
+import '../../viewmodels/planning_viewmodel.dart';
+import '../../viewmodels/vehicle_viewmodel.dart';
+import '../../viewmodels/fleet_admin_viewmodel.dart';
+import '../../viewmodels/super_admin_viewmodel.dart';
 import '../../models/subscription_tier.dart';
 
-class DashboardView extends StatelessWidget {
+class DashboardView extends StatefulWidget {
   const DashboardView({super.key});
+
+  @override
+  State<DashboardView> createState() => _DashboardViewState();
+}
+
+class _DashboardViewState extends State<DashboardView> {
+  @override
+  void initState() {
+    super.initState();
+    // Rafraîchir le profil à chaque arrivée sur le Dashboard pour capter les changements de tier
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<LoginViewModel>(context, listen: false).refreshProfile(context);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final user = Provider.of<LoginViewModel>(context).currentUser;
     final subVM = Provider.of<SubscriptionViewModel>(context);
     final tier = subVM.currentUser?.tier ?? user?.tier ?? SubscriptionTier.free;
+// ...
 
     return Scaffold(
       appBar: AppBar(
@@ -33,10 +52,24 @@ class DashboardView extends StatelessWidget {
           _buildTierBadge(context, tier),
           IconButton(
             icon: const Icon(Icons.logout),
-            onPressed: () {
-              Navigator.of(context).pushReplacement(
-                MaterialPageRoute(builder: (context) => const LoginView()),
-              );
+            onPressed: () async {
+              final loginVM = Provider.of<LoginViewModel>(context, listen: false);
+              final planningVM = Provider.of<PlanningViewModel>(context, listen: false);
+              final vehicleVM = Provider.of<VehicleViewModel>(context, listen: false);
+              final fleetVM = Provider.of<FleetAdminViewModel>(context, listen: false);
+              final superAdminVM = Provider.of<SuperAdminViewModel>(context, listen: false);
+
+              await loginVM.logout();
+              planningVM.clear();
+              vehicleVM.clear();
+              fleetVM.clear();
+              superAdminVM.clear();
+
+              if (context.mounted) {
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(builder: (context) => const LoginView()),
+                );
+              }
             },
           )
         ],
@@ -112,7 +145,7 @@ class DashboardView extends StatelessWidget {
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const FleetAdminView()),
-              ),
+              ).then((_) => Provider.of<LoginViewModel>(context, listen: false).refreshProfile(context)),
             ),
           if (user?.isSuperAdmin ?? false)
             _buildToolCard(

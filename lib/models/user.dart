@@ -29,7 +29,10 @@ class User {
   }
 
   static SubscriptionTier _tierFromString(String? tier) {
-    switch (tier) {
+    if (tier == null) return SubscriptionTier.free;
+    final String t = tier.toLowerCase().trim();
+    
+    switch (t) {
       case 'expert': return SubscriptionTier.expert;
       case 'professional': return SubscriptionTier.professional;
       case 'diamond': return SubscriptionTier.diamond;
@@ -43,6 +46,8 @@ class User {
       'username': username,
       'full_name': fullName,
       'tier': tier.name.toLowerCase(),
+      'custom_supabase_url': customSupabaseUrl,
+      'custom_supabase_anon_key': customSupabaseAnonKey,
     };
   }
 

@@ -10,6 +10,9 @@ import '../../models/recorded_trip.dart' show Waypoint;
 import '../../models/vehicle.dart';
 import '../../models/subscription_tier.dart';
 import '../../viewmodels/login_viewmodel.dart';
+import '../../viewmodels/planning_viewmodel.dart';
+import '../../viewmodels/fleet_admin_viewmodel.dart';
+import '../../viewmodels/super_admin_viewmodel.dart';
 import '../login/login_view.dart';
 import '../dashboard/dashboard_view.dart';
 import '../subscription/paywall_view.dart';
@@ -140,10 +143,23 @@ class _NavigationViewState extends State<NavigationView> {
               ListTile(
                 leading: const Icon(Icons.logout, color: Colors.red),
                 title: const Text('Déconnexion'),
-                onTap: () {
-                  // Simulation de déconnexion simple
-                  Navigator.pop(context);
-                  Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const NavigationView()));
+                onTap: () async {
+                  final loginVM = Provider.of<LoginViewModel>(context, listen: false);
+                  final planningVM = Provider.of<PlanningViewModel>(context, listen: false);
+                  final vehicleVM = Provider.of<VehicleViewModel>(context, listen: false);
+                  final fleetVM = Provider.of<FleetAdminViewModel>(context, listen: false);
+                  final superAdminVM = Provider.of<SuperAdminViewModel>(context, listen: false);
+
+                  await loginVM.logout();
+                  planningVM.clear();
+                  vehicleVM.clear();
+                  fleetVM.clear();
+                  superAdminVM.clear();
+
+                  if (context.mounted) {
+                    Navigator.pop(context); // Fermer le drawer
+                    Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const LoginView()));
+                  }
                 },
               ),
             ],

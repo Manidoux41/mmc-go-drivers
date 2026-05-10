@@ -21,6 +21,12 @@ class VehicleViewModel extends ChangeNotifier {
     }
   }
 
+  void clear() {
+    _vehicles = [];
+    _customClient = null;
+    notifyListeners();
+  }
+
   Future<void> fetchVehicles() async {
     _isLoading = true;
     notifyListeners();

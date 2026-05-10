@@ -10,6 +10,11 @@ class FleetAdminViewModel extends ChangeNotifier {
   List<User> get drivers => _drivers;
   bool get isLoading => _isLoading;
 
+  void clear() {
+    _drivers = [];
+    notifyListeners();
+  }
+
   Future<void> fetchDrivers() async {
     _isLoading = true;
     notifyListeners();
@@ -29,7 +34,11 @@ class FleetAdminViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> addDriver(String email, String fullName, String password, {SubscriptionTier tier = SubscriptionTier.professional}) async {
+  Future<void> addDriver(String email, String fullName, String password, {
+    SubscriptionTier tier = SubscriptionTier.professional,
+    String? customUrl,
+    String? customKey,
+  }) async {
     try {
       await SupabaseService.client.auth.signUp(
         email: email,
@@ -37,6 +46,8 @@ class FleetAdminViewModel extends ChangeNotifier {
         data: {
           'full_name': fullName,
           'tier': tier.name.toLowerCase(),
+          'custom_supabase_url': customUrl,
+          'custom_supabase_anon_key': customKey,
         },
       );
       
