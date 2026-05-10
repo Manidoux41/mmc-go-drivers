@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../../viewmodels/super_admin_viewmodel.dart';
+import '../../viewmodels/login_viewmodel.dart';
 import '../../models/user.dart';
 import '../../models/subscription_tier.dart';
 
@@ -81,7 +82,6 @@ class _ManageGlobalUsersTabState extends State<_ManageGlobalUsersTab> {
                       _confirmDelete(context, viewModel, user);
                     } else {
                       await _changeTier(context, viewModel, user);
-                      // Rafraîchissement forcé après fermeture du dialogue
                       viewModel.fetchAllData();
                     }
                   },
@@ -150,17 +150,14 @@ class _ManageGlobalUsersTabState extends State<_ManageGlobalUsersTab> {
                       Expanded(
                         child: TextField(
                           controller: urlController,
-                          decoration: const InputDecoration(labelText: 'URL Supabase Client', hintText: 'https://xyz.supabase.co', border: OutlineInputBorder()),
+                          decoration: const InputDecoration(labelText: 'URL Supabase Client', border: OutlineInputBorder()),
                         ),
                       ),
                       IconButton(
                         icon: const Icon(Icons.content_paste),
-                        tooltip: 'Coller l\'URL',
                         onPressed: () async {
                           final data = await Clipboard.getData(Clipboard.kTextPlain);
-                          if (data?.text != null) {
-                            urlController.text = data!.text!;
-                          }
+                          if (data?.text != null) urlController.text = data!.text!;
                         },
                       ),
                     ],
@@ -176,12 +173,9 @@ class _ManageGlobalUsersTabState extends State<_ManageGlobalUsersTab> {
                       ),
                       IconButton(
                         icon: const Icon(Icons.content_paste),
-                        tooltip: 'Coller la clé',
                         onPressed: () async {
                           final data = await Clipboard.getData(Clipboard.kTextPlain);
-                          if (data?.text != null) {
-                            keyController.text = data!.text!;
-                          }
+                          if (data?.text != null) keyController.text = data!.text!;
                         },
                       ),
                     ],
@@ -203,18 +197,10 @@ class _ManageGlobalUsersTabState extends State<_ManageGlobalUsersTab> {
                 
                 if (context.mounted) {
                   if (success) {
-                    Navigator.pop(context); // Ferme le dialogue
+                    Navigator.pop(context);
                     if (selectedTier == SubscriptionTier.diamond) {
                       _showSqlGuideSuggestion(context);
-                    } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Forfait mis à jour avec succès')),
-                      );
                     }
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Échec de la mise à jour. Vérifiez vos droits admin.')),
-                    );
                   }
                 }
               },
@@ -230,27 +216,16 @@ class _ManageGlobalUsersTabState extends State<_ManageGlobalUsersTab> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Row(
-          children: [
-            Icon(Icons.check_circle, color: Colors.green),
-            SizedBox(width: 10),
-            Text('Compte Diamant Activé'),
-          ],
-        ),
-        content: const Text(
-          'L\'utilisateur est maintenant en mode Diamant.\n\nSouhaitez-vous consulter le guide SQL pour initialiser sa nouvelle base de données ?'
-        ),
+        title: const Text('Compte Diamant Activé'),
+        content: const Text('Souhaitez-vous consulter le guide SQL pour initialiser la base du client ?'),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('PLUS TARD'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('PLUS TARD')),
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-              DefaultTabController.of(context).animateTo(2); // Bascule vers l'onglet Guide SQL
+              DefaultTabController.of(context).animateTo(2);
             },
-            child: const Text('VOIR LE GUIDE SQL'),
+            child: const Text('VOIR LE GUIDE'),
           ),
         ],
       ),
@@ -266,44 +241,18 @@ class _ManageRequestsTab extends StatelessWidget {
     return Consumer<SuperAdminViewModel>(
       builder: (context, viewModel, child) {
         if (viewModel.isLoading) return const Center(child: CircularProgressIndicator());
-        if (viewModel.contactRequests.isEmpty) {
-          return const Center(child: Text('Aucune demande de forfait Diamant.'));
-        }
-
         return ListView.builder(
           itemCount: viewModel.contactRequests.length,
           itemBuilder: (context, index) {
             final req = viewModel.contactRequests[index];
-            final date = DateTime.parse(req['created_at']);
-            final isProcessed = req['status'] == 'processed';
-
             return Card(
               margin: const EdgeInsets.all(8),
-              color: isProcessed ? Colors.grey.shade50 : Colors.white,
-              child: ExpansionTile(
-                leading: Icon(Icons.business, color: isProcessed ? Colors.grey : Colors.orange),
+              child: ListTile(
                 title: Text(req['sender_name'] ?? 'Inconnu'),
-                subtitle: Text('Le ${DateFormat('dd/MM/yyyy HH:mm').format(date)}'),
-                trailing: isProcessed ? const Icon(Icons.check_circle, color: Colors.green) : null,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Email: ${req['sender_email']}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 10),
-                        Text(req['message'] ?? 'Pas de message.'),
-                        const SizedBox(height: 20),
-                        if (!isProcessed)
-                          ElevatedButton(
-                            onPressed: () => viewModel.markRequestProcessed(req['id']),
-                            child: const Text('MARQUER COMME TRAITÉ'),
-                          ),
-                      ],
-                    ),
-                  )
-                ],
+                subtitle: Text(req['sender_email']),
+                trailing: req['status'] == 'pending' 
+                  ? ElevatedButton(onPressed: () => viewModel.markRequestProcessed(req['id']), child: const Text('TRAITER'))
+                  : const Icon(Icons.check_circle, color: Colors.green),
               ),
             );
           },
@@ -316,99 +265,52 @@ class _ManageRequestsTab extends StatelessWidget {
 class _SqlClientGuideTab extends StatelessWidget {
   const _SqlClientGuideTab();
 
-  final String _clientSqlScript = '''-- 1. Table des Véhicules du Client
+  final String _clientSqlScript = '''-- Tables Client Diamant
+CREATE TABLE IF NOT EXISTS profiles (
+  id UUID PRIMARY KEY,
+  username TEXT UNIQUE NOT NULL,
+  full_name TEXT,
+  tier TEXT DEFAULT 'professional'
+);
 CREATE TABLE IF NOT EXISTS vehicles (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   registration TEXT UNIQUE NOT NULL,
-  brand TEXT,
-  model TEXT,
-  height FLOAT,
-  length FLOAT,
-  width FLOAT,
-  unladen_weight FLOAT,
-  ptac FLOAT,
-  fuel_type TEXT,
-  mileage FLOAT DEFAULT 0,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  brand TEXT, model TEXT, height FLOAT, length FLOAT, width FLOAT,
+  unladen_weight FLOAT, ptac FLOAT, fuel_type TEXT, mileage FLOAT DEFAULT 0
 );
-
--- 2. Table des Activités (Planning) du Client
 CREATE TABLE IF NOT EXISTS activities (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  title TEXT NOT NULL,
-  type TEXT NOT NULL,
-  start_time TIMESTAMP WITH TIME ZONE NOT NULL,
-  end_time TIMESTAMP WITH TIME ZONE NOT NULL,
-  departure TEXT,
-  arrival TEXT,
-  vehicle_id UUID REFERENCES vehicles(id) ON DELETE SET NULL,
-  driver_id UUID NOT NULL, -- UUID de l'utilisateur dans l'Auth du client
-  stops JSONB,
-  file_path TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  title TEXT NOT NULL, type TEXT NOT NULL,
+  start_time TIMESTAMP WITH TIME ZONE, end_time TIMESTAMP WITH TIME ZONE,
+  departure TEXT, arrival TEXT, vehicle_id UUID REFERENCES vehicles(id),
+  driver_id UUID NOT NULL, stops JSONB, file_path TEXT
 );
-
--- 3. Activation de la sécurité (RLS)
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE vehicles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE activities ENABLE ROW LEVEL SECURITY;
-
--- 4. Politiques de base
-CREATE POLICY "View vehicles" ON vehicles FOR SELECT USING (true);
-CREATE POLICY "View activities" ON activities FOR SELECT USING (auth.uid() = driver_id);
-CREATE POLICY "Manage all" ON activities FOR ALL USING (true);
-CREATE POLICY "Manage vehicles" ON vehicles FOR ALL USING (true);
-''';
+CREATE POLICY "Public" ON profiles FOR ALL USING (true);
+CREATE POLICY "Public" ON vehicles FOR ALL USING (true);
+CREATE POLICY "Public" ON activities FOR ALL USING (true);''';
 
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Initialisation Base Client Diamant',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 10),
-          const Text(
-            'Copiez ce script et exécutez-le dans le SQL Editor du projet Supabase de votre client pour créer les tables nécessaires.',
-            style: TextStyle(color: Colors.grey),
-          ),
+          const Text('Script d\'initialisation Client Diamant', style: TextStyle(fontWeight: FontWeight.bold)),
           const SizedBox(height: 20),
           Container(
-            padding: const EdgeInsets.all(15),
-            decoration: BoxDecoration(
-              color: Colors.grey.shade900,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.copy, color: Colors.white70),
-                  onPressed: () {
-                    Clipboard.setData(ClipboardData(text: _clientSqlScript));
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Script copié dans le presse-papier')),
-                    );
-                  },
-                ),
-                Text(
-                  _clientSqlScript,
-                  style: const TextStyle(
-                    color: Colors.greenAccent,
-                    fontFamily: 'monospace',
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
+            padding: const EdgeInsets.all(10),
+            color: Colors.grey.shade900,
+            child: Text(_clientSqlScript, style: const TextStyle(color: Colors.greenAccent, fontSize: 10, fontFamily: 'monospace')),
           ),
-          const SizedBox(height: 30),
-          const AlertBox(
-            message: 'Rappel : Chaque client Diamant doit avoir son propre projet Supabase pour une isolation totale des données.',
-          ),
+          const SizedBox(height: 10),
+          ElevatedButton.icon(
+            onPressed: () => Clipboard.setData(ClipboardData(text: _clientSqlScript)),
+            icon: const Icon(Icons.copy),
+            label: const Text('COPIER LE SCRIPT'),
+          )
         ],
       ),
     );

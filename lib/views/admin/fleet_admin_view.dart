@@ -135,12 +135,13 @@ class _ManageDriversTabState extends State<_ManageDriversTab> {
           ),
           actions: [
             TextButton(onPressed: () => Navigator.pop(context), child: const Text('Annuler')),
-            ElevatedButton(
-              onPressed: () {
-                if (usernameController.text.isNotEmpty && passwordController.text.isNotEmpty) {
-                  final admin = Provider.of<LoginViewModel>(context, listen: false).currentUser;
-                  
-                  Provider.of<FleetAdminViewModel>(context, listen: false).addDriver(
+          ElevatedButton(
+            onPressed: () async {
+              if (usernameController.text.isNotEmpty && passwordController.text.isNotEmpty) {
+                final admin = Provider.of<LoginViewModel>(context, listen: false).currentUser;
+                
+                try {
+                  await Provider.of<FleetAdminViewModel>(context, listen: false).addDriver(
                     usernameController.text, 
                     fullNameController.text,
                     passwordController.text,
@@ -148,14 +149,27 @@ class _ManageDriversTabState extends State<_ManageDriversTab> {
                     customUrl: makeDiamond ? urlController.text : admin?.customSupabaseUrl,
                     customKey: makeDiamond ? keyController.text : admin?.customSupabaseAnonKey,
                   );
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Compte créé avec succès')),
-                  );
+                  if (context.mounted) {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Compte créé avec succès')),
+                    );
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    String errorMsg = "Erreur lors de la création";
+                    if (e.toString().contains("user_already_exists")) {
+                      errorMsg = "Cet email est déjà utilisé par un autre utilisateur";
+                    }
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(errorMsg), backgroundColor: Colors.red),
+                    );
+                  }
                 }
-              },
-              child: const Text('Créer le compte'),
-            ),
+              }
+            },
+            child: const Text('Créer le compte'),
+          ),
           ],
         ),
       ),
@@ -364,10 +378,14 @@ class _ManagePlanningTab extends StatelessWidget {
         onPressed: () {
           if (drivers.isNotEmpty) {
             _showAddMissionDialog(context, selectedDate, drivers.first);
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Veuillez d\'abord ajouter des conducteurs')),
+            );
           }
         },
         backgroundColor: Colors.blueGrey,
-        child: const Icon(Icons.edit_calendar, color: Colors.white),
+        child: const Icon(Icons.add, color: Colors.white),
       ),
     );
   }

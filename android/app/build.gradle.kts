@@ -15,7 +15,7 @@ if (keystorePropertiesFile.exists()) {
 
 android {
     namespace = "com.manidev41.mmcgodrivers"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 36 // Mis à jour selon les recommandations des plugins
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -39,7 +39,7 @@ android {
     defaultConfig {
         applicationId = "com.manidev41.mmcgodrivers"
         minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
+        targetSdk = 35 // On garde 35 (Android 15) pour le comportement d'exécution
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
@@ -49,6 +49,11 @@ android {
             signingConfig = signingConfigs.getByName("release")
         }
     }
+}
+
+dependencies {
+    // Nécessaire pour enableEdgeToEdge() et la conformité Android 15
+    implementation("androidx.activity:activity-ktx:1.9.3")
 }
 
 flutter {

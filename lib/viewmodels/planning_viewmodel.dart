@@ -91,7 +91,7 @@ class PlanningViewModel extends ChangeNotifier {
 
   Future<void> uploadPhotoPlanning(DateTime date) async {
     final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.camera);
+    final pickedFile = await picker.pickImage(source: ImageSource.camera, imageQuality: 70);
 
     if (pickedFile != null && _currentDriverId != null) {
       _isLoading = true;
@@ -100,15 +100,23 @@ class PlanningViewModel extends ChangeNotifier {
       try {
         if (kIsWeb) {
           debugPrint('L\'envoi de planning photo n\'est pas encore disponible sur le Web.');
+          _isLoading = false;
+          notifyListeners();
           return;
         }
+
+        final File imageFile = File(pickedFile.path);
+        
         // 1. Image -> PDF
-        final pdfFile = await PdfService.imageToPdf(File(pickedFile.path));
+        final pdfFile = await PdfService.imageToPdf(imageFile);
 
         if (pdfFile != null) {
           // 2. Upload to Storage
           final fileName = 'planning_${_currentDriverId}_${date.millisecondsSinceEpoch}.pdf';
-          final storagePath = await StorageService.uploadPlanningPdf(pdfFile, fileName);
+          
+          // Utiliser le client de stockage approprié (custom ou défaut)
+          final storageClient = _db.storage;
+          final String? storagePath = await _uploadToClientStorage(storageClient, pdfFile, fileName);
 
           if (storagePath != null) {
             // 3. Create Activity
@@ -116,8 +124,8 @@ class PlanningViewModel extends ChangeNotifier {
               id: '', // Supabase générera l'id
               title: 'Planning Photo du ${date.day}/${date.month}',
               type: ActivityType.photo_planning,
-              startTime: date.copyWith(hour: 8),
-              endTime: date.copyWith(hour: 18),
+              startTime: DateTime(date.year, date.month, date.day, 8, 0),
+              endTime: DateTime(date.year, date.month, date.day, 18, 0),
               driverId: _currentDriverId,
               filePath: storagePath,
             );
@@ -131,6 +139,19 @@ class PlanningViewModel extends ChangeNotifier {
 
       _isLoading = false;
       notifyListeners();
+    }
+  }
+
+  Future<String?> _uploadToClientStorage(SupabaseStorageClient storage, File file, String fileName) async {
+    try {
+      // On s'assure d'abord que le bucket existe
+      try { await storage.createBucket('plannings', const BucketOptions(public: true)); } catch (_) {}
+      
+      final path = await storage.from('plannings').upload(fileName, file);
+      return path;
+    } catch (e) {
+      debugPrint('Erreur storage spécifique: $e');
+      return null;
     }
   }
 

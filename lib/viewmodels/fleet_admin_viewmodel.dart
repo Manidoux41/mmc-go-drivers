@@ -47,7 +47,7 @@ class FleetAdminViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> addDriver(String email, String fullName, String password, {
+  Future<bool> addDriver(String email, String fullName, String password, {
     SubscriptionTier tier = SubscriptionTier.professional,
     String? customUrl,
     String? customKey,
@@ -76,8 +76,10 @@ class FleetAdminViewModel extends ChangeNotifier {
       }
       
       await fetchDrivers();
+      return true;
     } catch (e) {
       debugPrint("Erreur add driver : ${e.toString()}");
+      rethrow; // On rethrow pour que la vue puisse afficher l'erreur
     }
   }
 
