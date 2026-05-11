@@ -53,33 +53,38 @@ class FleetAdminViewModel extends ChangeNotifier {
     String? customKey,
   }) async {
     try {
-      // 1. Création du compte Auth dans le système central (pour le login)
+      debugPrint("DECENTRALE : Création chauffeur $email pour l'entreprise $customUrl");
+
+      // 1. Création du compte Auth dans le système central avec les clés de l'entreprise dans les METADATA
       final AuthResponse res = await SupabaseService.client.auth.signUp(
         email: email,
         password: password,
         data: {
           'full_name': fullName,
           'tier': tier.name.toLowerCase(),
-          'custom_supabase_url': customUrl,
+          'custom_supabase_url': customUrl, // Crucial pour la reconnexion automatique
           'custom_supabase_anon_key': customKey,
         },
       );
       
-      // 2. Si on est sur une base décentralisée (Diamond), on enregistre aussi le profil localement
+      // 2. Enregistrement du profil dans la base de données PRIVÉE de l'entreprise (Diamond)
       if (_customClient != null && res.user != null) {
         await _customClient!.from('profiles').insert({
           'id': res.user!.id,
           'username': email,
           'full_name': fullName,
-          'tier': tier.name.toLowerCase(),
+          'tier': tier.name.toLowerCase(), // Accès 'professional' par défaut
+          'custom_supabase_url': customUrl,
+          'custom_supabase_anon_key': customKey,
         });
+        debugPrint("DECENTRALE : Profil enregistré dans la base privée");
       }
       
       await fetchDrivers();
       return true;
     } catch (e) {
-      debugPrint("Erreur add driver : ${e.toString()}");
-      rethrow; // On rethrow pour que la vue puisse afficher l'erreur
+      debugPrint("DECENTRALE ERREUR : ${e.toString()}");
+      rethrow;
     }
   }
 
