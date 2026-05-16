@@ -41,7 +41,25 @@ CREATE TABLE activities (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 4. Table des Demandes Forfait Diamant (Contact)
+-- 4. Table des Trajets Enregistrés (Historique des lignes)
+CREATE TABLE IF NOT EXISTS public.recorded_trips (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  name TEXT NOT NULL, -- Nom de la ligne ou du parcours
+  driver_id UUID NOT NULL, -- Qui a enregistré
+  start_time TIMESTAMP WITH TIME ZONE NOT NULL,
+  end_time TIMESTAMP WITH TIME ZONE,
+  total_distance FLOAT DEFAULT 0,
+  max_speed FLOAT DEFAULT 0,
+  local_file_path TEXT, -- Référence au fichier KML/JSON sur le téléphone
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- RLS pour les trajets
+ALTER TABLE public.recorded_trips ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can view own trips" ON public.recorded_trips FOR SELECT USING (auth.uid() = driver_id);
+CREATE POLICY "Users can insert own trips" ON public.recorded_trips FOR INSERT WITH CHECK (auth.uid() = driver_id);
+
+-- 5. Table des Demandes Forfait Diamant (Contact)
 CREATE TABLE contact_requests (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   sender_email TEXT NOT NULL,

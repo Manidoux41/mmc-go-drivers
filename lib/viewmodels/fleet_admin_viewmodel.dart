@@ -53,31 +53,35 @@ class FleetAdminViewModel extends ChangeNotifier {
     String? customKey,
   }) async {
     try {
-      debugPrint("DECENTRALE : Création chauffeur $email pour l'entreprise $customUrl");
+      debugPrint("DECENTRALE : Création chauffeur $email");
 
-      // 1. Création du compte Auth dans le système central avec les clés de l'entreprise dans les METADATA
+      // 1. Création du compte Auth dans le système central 
+      // Le trigger "handle_new_user" sur la DB MASTER créera automatiquement le profil Master
       final AuthResponse res = await SupabaseService.client.auth.signUp(
         email: email,
         password: password,
         data: {
           'full_name': fullName,
           'tier': tier.name.toLowerCase(),
-          'custom_supabase_url': customUrl, // Crucial pour la reconnexion automatique
+          'custom_supabase_url': customUrl, 
           'custom_supabase_anon_key': customKey,
         },
       );
       
-      // 2. Enregistrement du profil dans la base de données PRIVÉE de l'entreprise (Diamond)
-      if (_customClient != null && res.user != null) {
-        await _customClient!.from('profiles').insert({
-          'id': res.user!.id,
-          'username': email,
-          'full_name': fullName,
-          'tier': tier.name.toLowerCase(), // Accès 'professional' par défaut
-          'custom_supabase_url': customUrl,
-          'custom_supabase_anon_key': customKey,
-        });
-        debugPrint("DECENTRALE : Profil enregistré dans la base privée");
+      if (res.user != null) {
+        // 2. Enregistrement du profil dans la base de données PRIVÉE de l'entreprise (Diamond)
+        if (_customClient != null) {
+          debugPrint("DECENTRALE : Enregistrement dans la base privée du client...");
+          await _customClient!.from('profiles').insert({
+            'id': res.user!.id,
+            'username': email,
+            'full_name': fullName,
+            'tier': tier.name.toLowerCase(), // Accès 'professional' pour le chauffeur
+            'custom_supabase_url': customUrl,
+            'custom_supabase_anon_key': customKey,
+          });
+          debugPrint("DECENTRALE : Succès base privée");
+        }
       }
       
       await fetchDrivers();
