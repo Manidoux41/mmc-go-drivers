@@ -22,7 +22,7 @@ class StripeService {
       // 1. Créer le PaymentIntent
       final paymentIntent = await _createPaymentIntent(amount, currency);
       
-      if (paymentIntent == null || paymentIntent['client_secret'] == null) {
+      if (paymentIntent['client_secret'] == null) {
         debugPrint('Erreur: Le serveur Stripe n\'a pas renvoyé de client_secret');
         debugPrint('Réponse Stripe: $paymentIntent');
         return false;

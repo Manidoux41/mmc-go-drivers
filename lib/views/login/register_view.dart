@@ -93,7 +93,9 @@ class _RegisterViewState extends State<RegisterView> {
 
                       final success = await viewModel.register(_fullNameController.text);
                       
-                      if (success && mounted) {
+                      if (!mounted) return;
+
+                      if (success) {
                         // Synchronisation du user avec le SubscriptionViewModel
                         final subVM = Provider.of<SubscriptionViewModel>(context, listen: false);
                         subVM.setUser(viewModel.currentUser!);

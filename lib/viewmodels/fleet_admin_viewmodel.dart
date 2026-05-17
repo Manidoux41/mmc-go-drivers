@@ -92,7 +92,7 @@ class FleetAdminViewModel extends ChangeNotifier {
     }
   }
 
-  Future<void> removeDriver(String driverId) async {
+  Future<bool> removeDriver(String driverId) async {
     try {
       await _db
           .from('profiles')
@@ -100,8 +100,10 @@ class FleetAdminViewModel extends ChangeNotifier {
           .eq('id', driverId);
       
       await fetchDrivers();
+      return true;
     } catch (e) {
-      debugPrint("Erreur remove driver : ${e.toString()}");
+      debugPrint("ERREUR SUPPRESSION CHAUFFEUR : ${e.toString()}");
+      return false;
     }
   }
 }

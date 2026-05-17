@@ -171,7 +171,7 @@ class _DashboardViewState extends State<DashboardView> {
         margin: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
         padding: const EdgeInsets.symmetric(horizontal: 12),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.2),
+          color: Colors.white.withValues(alpha: 0.2),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: Colors.white, width: 1),
         ),

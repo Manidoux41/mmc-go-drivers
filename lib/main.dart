@@ -11,7 +11,6 @@ import 'viewmodels/fleet_admin_viewmodel.dart';
 import 'viewmodels/super_admin_viewmodel.dart';
 import 'services/stripe_service.dart';
 import 'services/supabase_service.dart';
-import 'views/login/login_view.dart';
 import 'views/navigation/navigation_view.dart';
 
 void main() async {

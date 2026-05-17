@@ -70,6 +70,16 @@
 		<string>Cette application a besoin d'accéder à votre position pour enregistrer vos trajets de bus.</string>
 		<key>NSLocationAlwaysUsageDescription</key>
 		<string>Cette application a besoin d'accéder à votre position en arrière-plan pour suivre votre trajet.</string>
+		<key>NSCameraUsageDescription</key>
+		<string>Cette application a besoin de l'appareil photo pour scanner vos plannings papier.</string>
+		<key>NSPhotoLibraryUsageDescription</key>
+		<string>Cette application a besoin d'accéder à vos photos pour enregistrer vos documents.</string>
+		<key>NSMicrophoneUsageDescription</key>
+		<string>Cette application a besoin d'accéder au micro si vous enregistrez des vidéos.</string>
+		<key>UIFileSharingEnabled</key>
+		<true/>
+		<key>LSSupportsOpeningDocumentsInPlace</key>
+		<true/>
 		<key>LSApplicationQueriesSchemes</key>
 		<array>
 			<string>tel</string>

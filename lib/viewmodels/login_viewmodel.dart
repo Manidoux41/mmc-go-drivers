@@ -22,8 +22,8 @@ class LoginViewModel extends ChangeNotifier {
 
   Future<void> _checkExistingSession() async {
     final session = SupabaseService.client.auth.currentSession;
-    if (session != null && session.user != null) {
-      await _fetchProfile(session.user.id);
+    if (session?.user != null) {
+      await _fetchProfile(session!.user.id);
       // Le Dashboard s'occupera de la synchronisation via refreshProfile au démarrage
       notifyListeners();
     }

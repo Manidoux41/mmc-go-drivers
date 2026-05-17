@@ -1,5 +1,3 @@
-import 'package:universal_io/io.dart';
-
 enum DocumentType {
   license,
   fimo,

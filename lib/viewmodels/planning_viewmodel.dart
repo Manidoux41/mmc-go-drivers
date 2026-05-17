@@ -1,14 +1,15 @@
+import 'package:device_calendar/device_calendar.dart' as cal;
+import 'package:timezone/data/latest.dart' as tz;
+import 'package:timezone/timezone.dart' as tz;
 import 'package:flutter/foundation.dart';
 import 'package:universal_io/io.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:latlong2/latlong.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/planning_activity.dart';
 import '../models/vehicle.dart';
 import '../services/supabase_service.dart';
 import '../services/pdf_service.dart';
-import '../services/storage_service.dart';
 import 'vehicle_viewmodel.dart';
 
 enum PlanningViewMode { day, week, month }
@@ -24,7 +25,14 @@ class PlanningViewModel extends ChangeNotifier {
   List<PlanningActivity> _activities = [];
   bool _isLoading = false;
 
-  PlanningViewModel({required this.vehicleViewModel});
+  PlanningActivity? _clipboardActivity; // Pour le copier-coller
+  PlanningActivity? get clipboardActivity => _clipboardActivity;
+
+  final cal.DeviceCalendarPlugin _calendarPlugin = cal.DeviceCalendarPlugin();
+
+  PlanningViewModel({required this.vehicleViewModel}) {
+    tz.initializeTimeZones();
+  }
 
   DateTime get selectedDate => _selectedDate;
   PlanningViewMode get viewMode => _viewMode;
@@ -155,19 +163,54 @@ class PlanningViewModel extends ChangeNotifier {
     }
   }
 
-  Future<void> addActivity(PlanningActivity activity) async {
+  Future<bool> addActivity(PlanningActivity activity, {bool syncToCalendar = false}) async {
     try {
       await _db
           .from('activities')
           .insert(activity.toJson());
       
+      if (syncToCalendar) {
+        await _syncToDeviceCalendar(activity);
+      }
+      
       await fetchActivities();
+      return true;
     } catch (e) {
-      debugPrint("Erreur add activity : ${e.toString()}");
+      debugPrint("ERREUR AJOUT ACTIVITÉ : ${e.toString()}");
+      return false;
     }
   }
 
-  Future<void> removeActivity(String activityId) async {
+  Future<void> _syncToDeviceCalendar(PlanningActivity activity) async {
+    try {
+      var permissionsGranted = await _calendarPlugin.hasPermissions();
+      if (permissionsGranted.isSuccess && !permissionsGranted.data!) {
+        permissionsGranted = await _calendarPlugin.requestPermissions();
+        if (!permissionsGranted.isSuccess || !permissionsGranted.data!) return;
+      }
+
+      final calendars = await _calendarPlugin.retrieveCalendars();
+      if (calendars.isSuccess && calendars.data != null && calendars.data!.isNotEmpty) {
+        // On prend le premier calendrier éditable (souvent le principal)
+        final targetCalendar = calendars.data!.firstWhere((c) => !c.isReadOnly!, orElse: () => calendars.data!.first);
+        
+        final event = cal.Event(
+          targetCalendar.id,
+          title: "Mission MMC Go: ${activity.title}",
+          description: activity.departure != null ? "De ${activity.departure} à ${activity.arrival}" : "Activité professionnelle",
+          start: tz.TZDateTime.from(activity.startTime, tz.local),
+          end: tz.TZDateTime.from(activity.endTime, tz.local),
+        );
+
+        await _calendarPlugin.createOrUpdateEvent(event);
+        debugPrint("CALENDAR : Synchronisé avec l'agenda du téléphone");
+      }
+    } catch (e) {
+      debugPrint("CALENDAR ERROR : $e");
+    }
+  }
+
+  Future<bool> removeActivity(String activityId) async {
     try {
       await _db
           .from('activities')
@@ -175,8 +218,25 @@ class PlanningViewModel extends ChangeNotifier {
           .eq('id', activityId);
       
       await fetchActivities();
+      return true;
     } catch (e) {
-      debugPrint("Erreur remove activity : ${e.toString()}");
+      debugPrint("ERREUR SUPPRESSION ACTIVITÉ : ${e.toString()}");
+      return false;
+    }
+  }
+
+  Future<bool> updateActivity(PlanningActivity activity) async {
+    try {
+      await _db
+          .from('activities')
+          .update(activity.toJson())
+          .eq('id', activity.id);
+      
+      await fetchActivities();
+      return true;
+    } catch (e) {
+      debugPrint("ERREUR UPDATE ACTIVITÉ : ${e.toString()}");
+      return false;
     }
   }
 
@@ -284,6 +344,25 @@ class PlanningViewModel extends ChangeNotifier {
 
   void goToToday() {
     _selectedDate = DateTime.now();
+    notifyListeners();
+  }
+
+  void copyActivity(PlanningActivity activity) {
+    _clipboardActivity = activity;
+    notifyListeners();
+  }
+
+  Future<bool> pasteActivity(DateTime targetDate) async {
+    if (_clipboardActivity == null) return false;
+    
+    final newActivity = _clipboardActivity!.copyWithDate(targetDate);
+    // On ne synchronise pas forcément l'agenda par défaut lors d'un coller, 
+    // ou on peut laisser le choix. Ici on simplifie.
+    return await addActivity(newActivity);
+  }
+
+  void clearClipboard() {
+    _clipboardActivity = null;
     notifyListeners();
   }
 }

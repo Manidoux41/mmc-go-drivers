@@ -16,21 +16,25 @@ class DocumentViewModel extends ChangeNotifier {
   List<DriverDocument> get documents => _documents;
 
   Future<void> pickDocument(String id, ImageSource source) async {
-    final XFile? image = await _picker.pickImage(source: source);
-    if (image != null) {
-      final index = _documents.indexWhere((doc) => doc.id == id);
-      if (index != -1) {
-        final oldDoc = _documents[index];
-        _documents[index] = DriverDocument(
-          id: oldDoc.id,
-          title: oldDoc.title,
-          type: oldDoc.type,
-          expiryDate: oldDoc.expiryDate,
-          filePath: image.path,
-          isVerified: oldDoc.isVerified,
-        );
-        notifyListeners();
+    try {
+      final XFile? image = await _picker.pickImage(source: source);
+      if (image != null) {
+        final index = _documents.indexWhere((doc) => doc.id == id);
+        if (index != -1) {
+          final oldDoc = _documents[index];
+          _documents[index] = DriverDocument(
+            id: oldDoc.id,
+            title: oldDoc.title,
+            type: oldDoc.type,
+            expiryDate: oldDoc.expiryDate,
+            filePath: image.path,
+            isVerified: oldDoc.isVerified,
+          );
+          notifyListeners();
+        }
       }
+    } catch (e) {
+      debugPrint("ERREUR PICK DOCUMENT : $e");
     }
   }
 

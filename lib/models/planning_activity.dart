@@ -11,6 +11,7 @@ class PlanningActivity {
   final DateTime endTime;
   final String? departure;
   final String? arrival;
+  final String? description; // Champ de description optionnel
   final List<Waypoint>? stops; // Pour les Billet Collectifs (BC)
   final Vehicle? vehicle; // Lien vers l'objet véhicule complet
   final String? driverId; // UUID du conducteur (Diamant)
@@ -24,6 +25,7 @@ class PlanningActivity {
     required this.endTime,
     this.departure,
     this.arrival,
+    this.description,
     this.stops,
     this.vehicle,
     this.driverId,
@@ -39,6 +41,7 @@ class PlanningActivity {
       endTime: DateTime.parse(json['end_time']),
       departure: json['departure'],
       arrival: json['arrival'],
+      description: json['description'],
       vehicle: vehicle,
       driverId: json['driver_id'],
       filePath: json['file_path'],
@@ -61,11 +64,33 @@ class PlanningActivity {
       'end_time': endTime.toIso8601String(),
       'departure': departure,
       'arrival': arrival,
+      'description': description,
       'vehicle_id': vehicle?.id,
       'driver_id': driverId,
       'file_path': filePath,
       'stops': stops?.map((s) => s.toJson()).toList(),
     };
+  }
+
+  PlanningActivity copyWithDate(DateTime date) {
+    // Garder les mêmes heures mais changer la date
+    final newStart = DateTime(date.year, date.month, date.day, startTime.hour, startTime.minute);
+    final newEnd = DateTime(date.year, date.month, date.day, endTime.hour, endTime.minute);
+    
+    return PlanningActivity(
+      id: '', // Nouvelle ID générée par Supabase
+      title: title,
+      type: type,
+      startTime: newStart,
+      endTime: newEnd,
+      departure: departure,
+      arrival: arrival,
+      description: description,
+      stops: stops,
+      vehicle: vehicle,
+      driverId: driverId,
+      filePath: filePath,
+    );
   }
 
   String? get busNumber => vehicle?.registration;

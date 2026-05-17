@@ -5,6 +5,7 @@ import 'package:xml/xml.dart' as xml;
 import 'package:universal_io/io.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:path_provider/path_provider.dart';
@@ -506,6 +507,14 @@ class NavigationViewModel extends ChangeNotifier {
           }
         }
       }
+    } on PlatformException catch (e) {
+      if (e.code == 'error' && e.message?.contains('MissingPluginException') == true) {
+        debugPrint("KML ERREUR : Plugin FilePicker non enregistré. Effectuez un Build complet (Stop + Play).");
+      } else {
+        debugPrint("KML ERREUR PLATEFORME : $e");
+      }
+    } on MissingPluginException {
+      debugPrint("KML ERREUR : Plugin FilePicker manquant. Effectuez un Build complet (Stop + Play).");
     } catch (e) {
       debugPrint("KML ERREUR : $e");
     }

@@ -235,18 +235,18 @@ class _DiamondContactFormState extends State<_DiamondContactForm> {
                     message: _messageController.text,
                   );
 
-                  if (mounted) {
-                    setState(() {
-                      _isSending = false;
-                      if (success) {
-                        _isSent = true;
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Échec de l\'envoi. Veuillez réessayer.')),
-                        );
-                      }
-                    });
-                  }
+                  if (!mounted) return;
+
+                  setState(() {
+                    _isSending = false;
+                    if (success) {
+                      _isSent = true;
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Échec de l\'envoi. Veuillez réessayer.')),
+                      );
+                    }
+                  });
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.orange,
@@ -350,7 +350,10 @@ class _PaymentSimulationFormState extends State<_PaymentSimulationForm> {
                     widget.tier,
                     useStripe: _useRealStripe,
                   );
-                  if (success && mounted) {
+
+                  if (!mounted) return;
+
+                  if (success) {
                     Navigator.pushAndRemoveUntil(
                       context,
                       MaterialPageRoute(builder: (context) => const DashboardView()),
@@ -359,7 +362,7 @@ class _PaymentSimulationFormState extends State<_PaymentSimulationForm> {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text('Félicitations ! Vous êtes maintenant ${widget.tier.displayName}')),
                     );
-                  } else if (!success && mounted) {
+                  } else {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Le paiement a échoué ou a été annulé.')),
                     );

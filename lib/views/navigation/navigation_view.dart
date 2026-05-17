@@ -202,7 +202,7 @@ class _NavigationViewState extends State<NavigationView> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.9),
+                          color: Colors.white.withValues(alpha: 0.9),
                           borderRadius: BorderRadius.circular(4),
                           border: Border.all(color: Colors.blue, width: 1),
                         ),
@@ -254,7 +254,7 @@ class _NavigationViewState extends State<NavigationView> {
                       ...viewModel.routeOptions.asMap().entries.where((e) => e.key != viewModel.selectedRouteIndex).map((e) => Polyline(
                         points: e.value.points,
                         strokeWidth: 3,
-                        color: Colors.grey.withOpacity(0.3),
+                        color: Colors.grey.withValues(alpha: 0.3),
                       )),
                       // Trajet enregistré
                       if (viewModel.recordedRoute.isNotEmpty)
@@ -346,7 +346,7 @@ class _NavigationViewState extends State<NavigationView> {
                       top: 10,
                       left: 10,
                       child: Card(
-                        color: Colors.white.withOpacity(0.9),
+                        color: Colors.white.withValues(alpha: 0.9),
                         child: Padding(
                           padding: const EdgeInsets.all(8.0),
                           child: Column(
@@ -424,7 +424,7 @@ class _NavigationViewState extends State<NavigationView> {
                     if (viewModel.isRecording)
                       Card(
                         elevation: 8,
-                        color: Colors.white.withOpacity(0.95),
+                        color: Colors.white.withValues(alpha: 0.95),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                         child: Padding(
                           padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
@@ -847,7 +847,7 @@ class _NavigationViewState extends State<NavigationView> {
                 child: GestureDetector(
                   onTap: () => setState(() => _showGraphs = !_showGraphs),
                   child: Card(
-                    color: Colors.black87.withOpacity(0.8),
+                    color: Colors.black87.withValues(alpha: 0.8),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 15),
@@ -876,7 +876,7 @@ class _NavigationViewState extends State<NavigationView> {
                 child: Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.red.withOpacity(0.9),
+                    color: Colors.red.withValues(alpha: 0.9),
                     shape: BoxShape.circle,
                     boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 4)],
                   ),
@@ -943,7 +943,7 @@ class _NavigationViewState extends State<NavigationView> {
       margin: const EdgeInsets.only(top: 10),
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: Colors.black87.withOpacity(0.8),
+        color: Colors.black87.withValues(alpha: 0.8),
         borderRadius: BorderRadius.circular(15),
       ),
       child: LineChart(

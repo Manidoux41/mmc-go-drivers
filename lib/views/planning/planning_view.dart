@@ -47,6 +47,25 @@ class _PlanningViewState extends State<PlanningView> {
             onPressed: () => context.read<PlanningViewModel>().goToToday(),
             tooltip: "Aujourd'hui",
           ),
+          Consumer<PlanningViewModel>(
+            builder: (context, vm, child) {
+              if (vm.clipboardActivity != null) {
+                return IconButton(
+                  icon: const Icon(Icons.content_paste, color: Colors.orangeAccent),
+                  onPressed: () async {
+                    final success = await vm.pasteActivity(vm.selectedDate);
+                    if (context.mounted && success) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Mission collée avec succès')),
+                      );
+                    }
+                  },
+                  tooltip: "Coller la mission copiée",
+                );
+              }
+              return const SizedBox.shrink();
+            },
+          ),
         ],
       ),
       body: Consumer<PlanningViewModel>(
@@ -82,14 +101,113 @@ class _PlanningViewState extends State<PlanningView> {
         builder: (context, loginVM, child) {
           final tier = loginVM.currentUser?.tier ?? SubscriptionTier.free;
           if (tier.index >= SubscriptionTier.professional.index) {
-            return FloatingActionButton(
-              onPressed: () => context.read<PlanningViewModel>().uploadPhotoPlanning(context.read<PlanningViewModel>().selectedDate),
-              backgroundColor: Theme.of(context).primaryColor,
-              child: const Icon(Icons.add_a_photo, color: Colors.white),
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                FloatingActionButton(
+                  heroTag: 'btn_add_mission',
+                  onPressed: () => _showManualAddMissionDialog(context),
+                  backgroundColor: Colors.orange,
+                  child: const Icon(Icons.add_task, color: Colors.white),
+                ),
+                const SizedBox(height: 10),
+                FloatingActionButton(
+                  heroTag: 'btn_scan_planning',
+                  onPressed: () => context.read<PlanningViewModel>().uploadPhotoPlanning(context.read<PlanningViewModel>().selectedDate),
+                  backgroundColor: Theme.of(context).primaryColor,
+                  child: const Icon(Icons.add_a_photo, color: Colors.white),
+                ),
+              ],
             );
           }
           return const SizedBox.shrink();
         },
+      ),
+    );
+  }
+
+  void _showManualAddMissionDialog(BuildContext context) {
+    final titleController = TextEditingController();
+    final departureController = TextEditingController();
+    final arrivalController = TextEditingController();
+    final descriptionController = TextEditingController();
+    DateTime startTime = DateTime.now().copyWith(hour: 8, minute: 0);
+    DateTime endTime = DateTime.now().copyWith(hour: 10, minute: 0);
+    bool syncCalendar = true;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Ajouter une mission personnelle'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(controller: titleController, decoration: const InputDecoration(labelText: 'Titre (ex: Service Scolaire 41)')),
+                TextField(controller: departureController, decoration: const InputDecoration(labelText: 'Départ')),
+                TextField(controller: arrivalController, decoration: const InputDecoration(labelText: 'Arrivée')),
+                TextField(
+                  controller: descriptionController, 
+                  decoration: const InputDecoration(labelText: 'Description / Notes (Optionnel)'),
+                  maxLines: 2,
+                ),
+                const SizedBox(height: 15),
+                ListTile(
+                  title: const Text('Début', style: TextStyle(fontSize: 12)),
+                  subtitle: Text(DateFormat('HH:mm').format(startTime)),
+                  trailing: const Icon(Icons.access_time),
+                  onTap: () async {
+                    final time = await showTimePicker(context: context, initialTime: TimeOfDay.fromDateTime(startTime));
+                    if (time != null) setDialogState(() => startTime = startTime.copyWith(hour: time.hour, minute: time.minute));
+                  },
+                ),
+                ListTile(
+                  title: const Text('Fin', style: TextStyle(fontSize: 12)),
+                  subtitle: Text(DateFormat('HH:mm').format(endTime)),
+                  trailing: const Icon(Icons.access_time),
+                  onTap: () async {
+                    final time = await showTimePicker(context: context, initialTime: TimeOfDay.fromDateTime(endTime));
+                    if (time != null) setDialogState(() => endTime = endTime.copyWith(hour: time.hour, minute: time.minute));
+                  },
+                ),
+                CheckboxListTile(
+                  title: const Text('Ajouter à l\'agenda du téléphone', style: TextStyle(fontSize: 12)),
+                  value: syncCalendar,
+                  onChanged: (val) => setDialogState(() => syncCalendar = val!),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Annuler')),
+            ElevatedButton(
+              onPressed: () async {
+                final loginVM = Provider.of<LoginViewModel>(context, listen: false);
+                final planningVM = Provider.of<PlanningViewModel>(context, listen: false);
+                
+                final activity = PlanningActivity(
+                  id: '', 
+                  title: titleController.text,
+                  type: ActivityType.trip,
+                  startTime: DateTime(planningVM.selectedDate.year, planningVM.selectedDate.month, planningVM.selectedDate.day, startTime.hour, startTime.minute),
+                  endTime: DateTime(planningVM.selectedDate.year, planningVM.selectedDate.month, planningVM.selectedDate.day, endTime.hour, endTime.minute),
+                  departure: departureController.text,
+                  arrival: arrivalController.text,
+                  description: descriptionController.text,
+                  driverId: loginVM.currentUser?.id,
+                );
+
+                await planningVM.addActivity(activity, syncToCalendar: syncCalendar);
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Mission ajoutée et synchronisée')));
+                }
+              },
+              child: const Text('ENREGISTRER'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -125,13 +243,14 @@ class _PlanningViewState extends State<PlanningView> {
   Widget _buildActivityBlock(BuildContext context, PlanningActivity activity) {
     final timeFormat = DateFormat('HH:mm');
     final accentColor = _getAccentColor(context, activity.type);
+    final vm = context.read<PlanningViewModel>();
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(15),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 5, offset: const Offset(0, 2))],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 5, offset: const Offset(0, 2))],
         border: Border(left: BorderSide(color: accentColor, width: 6)),
       ),
       child: ListTile(
@@ -143,12 +262,33 @@ class _PlanningViewState extends State<PlanningView> {
             _showActivityDetails(context, activity);
           }
         },
+        onLongPress: () {
+          _showActivityOptions(context, vm, activity);
+        },
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         title: Row(
           children: [
             Text(
               activity.type == ActivityType.photo_planning ? 'Planning PDF' : '${timeFormat.format(activity.startTime)} - ${timeFormat.format(activity.endTime)}',
               style: TextStyle(fontWeight: FontWeight.bold, color: accentColor),
+            ),
+            const SizedBox(width: 8),
+            // Nouveau bouton d'édition direct
+            IconButton(
+              icon: const Icon(Icons.edit, size: 16, color: Colors.blue),
+              constraints: const BoxConstraints(),
+              padding: EdgeInsets.zero,
+              onPressed: () => _showEditMissionDialog(context, activity),
+              tooltip: 'Modifier',
+            ),
+            const SizedBox(width: 8),
+            // Nouveau bouton de suppression direct
+            IconButton(
+              icon: const Icon(Icons.delete_outline, size: 16, color: Colors.red),
+              constraints: const BoxConstraints(),
+              padding: EdgeInsets.zero,
+              onPressed: () => _confirmDeleteMission(context, vm, activity),
+              tooltip: 'Supprimer',
             ),
             const Spacer(),
             if (activity.type != ActivityType.photo_planning)
@@ -185,7 +325,7 @@ class _PlanningViewState extends State<PlanningView> {
               Container(
                 margin: const EdgeInsets.only(top: 8),
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(color: accentColor.withOpacity(0.1), borderRadius: BorderRadius.circular(5)),
+                decoration: BoxDecoration(color: accentColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(5)),
                 child: Text('Bus: ${activity.busNumber}', style: TextStyle(color: accentColor, fontSize: 12, fontWeight: FontWeight.bold)),
               ),
           ],
@@ -197,7 +337,7 @@ class _PlanningViewState extends State<PlanningView> {
                 icon: const Icon(Icons.navigation, color: Colors.purple),
                 onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => NavigationView(activity: activity))),
               )
-            : Icon(_getTypeIconData(activity.type), color: accentColor.withOpacity(0.5))),
+            : Icon(_getTypeIconData(activity.type), color: accentColor.withValues(alpha: 0.5))),
       ),
     );
   }
@@ -271,16 +411,182 @@ class _PlanningViewState extends State<PlanningView> {
       context: context,
       builder: (context) => AlertDialog(
         title: Text(activity.title),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildDetailRow(Icons.calendar_today, 'Date', dateFormat.format(activity.startTime)),
-            _buildDetailRow(Icons.access_time, 'Horaires', '${timeFormat.format(activity.startTime)} - ${timeFormat.format(activity.endTime)}'),
-            if (activity.busNumber != null) _buildDetailRow(Icons.directions_bus, 'Véhicule', activity.busNumber!),
-            if (activity.departure != null) _buildDetailRow(Icons.location_on, 'Itinéraire', '${activity.departure} ➔ ${activity.arrival}'),
-          ],
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildDetailRow(Icons.calendar_today, 'Date', dateFormat.format(activity.startTime)),
+              _buildDetailRow(Icons.access_time, 'Horaires', '${timeFormat.format(activity.startTime)} - ${timeFormat.format(activity.endTime)}'),
+              if (activity.busNumber != null) _buildDetailRow(Icons.directions_bus, 'Véhicule', activity.busNumber!),
+              if (activity.departure != null) _buildDetailRow(Icons.location_on, 'Itinéraire', '${activity.departure} ➔ ${activity.arrival}'),
+              if (activity.description != null && activity.description!.isNotEmpty)
+                _buildDetailRow(Icons.description, 'Description', activity.description!),
+            ],
+          ),
         ),
         actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Fermer'))],
+      ),
+    );
+  }
+
+  void _showEditMissionDialog(BuildContext context, PlanningActivity activity) {
+    final titleController = TextEditingController(text: activity.title);
+    final departureController = TextEditingController(text: activity.departure);
+    final arrivalController = TextEditingController(text: activity.arrival);
+    final descriptionController = TextEditingController(text: activity.description);
+    DateTime selectedDate = activity.startTime;
+    DateTime startTime = activity.startTime;
+    DateTime endTime = activity.endTime;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Modifier la mission'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(controller: titleController, decoration: const InputDecoration(labelText: 'Titre')),
+                ListTile(
+                  title: const Text('Date', style: TextStyle(fontSize: 12)),
+                  subtitle: Text(DateFormat('dd/MM/yyyy').format(selectedDate)),
+                  trailing: const Icon(Icons.calendar_today),
+                  onTap: () async {
+                    final date = await showDatePicker(
+                      context: context,
+                      initialDate: selectedDate,
+                      firstDate: DateTime(2020),
+                      lastDate: DateTime(2030),
+                    );
+                    if (date != null) setDialogState(() => selectedDate = date);
+                  },
+                ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ListTile(
+                        title: const Text('Début', style: TextStyle(fontSize: 12)),
+                        subtitle: Text(DateFormat('HH:mm').format(startTime)),
+                        onTap: () async {
+                          final time = await showTimePicker(context: context, initialTime: TimeOfDay.fromDateTime(startTime));
+                          if (time != null) setDialogState(() => startTime = DateTime(selectedDate.year, selectedDate.month, selectedDate.day, time.hour, time.minute));
+                        },
+                      ),
+                    ),
+                    Expanded(
+                      child: ListTile(
+                        title: const Text('Fin', style: TextStyle(fontSize: 12)),
+                        subtitle: Text(DateFormat('HH:mm').format(endTime)),
+                        onTap: () async {
+                          final time = await showTimePicker(context: context, initialTime: TimeOfDay.fromDateTime(endTime));
+                          if (time != null) setDialogState(() => endTime = DateTime(selectedDate.year, selectedDate.month, selectedDate.day, time.hour, time.minute));
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+                TextField(controller: departureController, decoration: const InputDecoration(labelText: 'Départ')),
+                TextField(controller: arrivalController, decoration: const InputDecoration(labelText: 'Arrivée')),
+                TextField(controller: descriptionController, decoration: const InputDecoration(labelText: 'Notes'), maxLines: 2),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Annuler')),
+            ElevatedButton(
+              onPressed: () async {
+                final planningVM = Provider.of<PlanningViewModel>(context, listen: false);
+                
+                final updatedActivity = PlanningActivity(
+                  id: activity.id,
+                  title: titleController.text,
+                  type: activity.type,
+                  startTime: DateTime(selectedDate.year, selectedDate.month, selectedDate.day, startTime.hour, startTime.minute),
+                  endTime: DateTime(selectedDate.year, selectedDate.month, selectedDate.day, endTime.hour, endTime.minute),
+                  departure: departureController.text,
+                  arrival: arrivalController.text,
+                  description: descriptionController.text,
+                  driverId: activity.driverId,
+                  vehicle: activity.vehicle,
+                  filePath: activity.filePath,
+                );
+
+                final success = await planningVM.updateActivity(updatedActivity);
+                if (context.mounted && success) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Mission mise à jour')));
+                }
+              },
+              child: const Text('ENREGISTRER'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showActivityOptions(BuildContext context, PlanningViewModel vm, PlanningActivity activity) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Wrap(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.copy),
+              title: const Text('Copier cette mission'),
+              onTap: () {
+                vm.copyActivity(activity);
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Mission copiée. Allez à une autre date pour la coller.')),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.edit, color: Colors.blue),
+              title: const Text('Modifier la mission', style: TextStyle(color: Colors.blue)),
+              onTap: () {
+                Navigator.pop(context);
+                _showEditMissionDialog(context, activity);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete, color: Colors.red),
+              title: const Text('Supprimer cette mission', style: TextStyle(color: Colors.red)),
+              onTap: () {
+                Navigator.pop(context);
+                _confirmDeleteMission(context, vm, activity);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _confirmDeleteMission(BuildContext context, PlanningViewModel vm, PlanningActivity activity) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Supprimer la mission ?'),
+        content: Text('Voulez-vous vraiment supprimer "${activity.title}" ?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('ANNULER')),
+          ElevatedButton(
+            onPressed: () async {
+              final success = await vm.removeActivity(activity.id);
+              if (context.mounted) {
+                Navigator.pop(context);
+                if (success) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Mission supprimée')));
+                }
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('SUPPRIMER', style: TextStyle(color: Colors.white)),
+          ),
+        ],
       ),
     );
   }

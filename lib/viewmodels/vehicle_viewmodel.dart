@@ -36,26 +36,28 @@ class VehicleViewModel extends ChangeNotifier {
           .from('vehicles')
           .select()
           .order('registration');
-// ...
       
       _vehicles = (data as List).map((v) => Vehicle.fromJson(v)).toList();
+      debugPrint("SYNCHRO : ${_vehicles.length} véhicules récupérés.");
     } catch (e) {
-      debugPrint("Erreur fetch vehicles : ${e.toString()}");
+      debugPrint("ERREUR SYNCHRO VEHICULES : ${e.toString()}");
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
-
-    _isLoading = false;
-    notifyListeners();
   }
 
-  Future<void> addVehicle(Vehicle vehicle) async {
+  Future<bool> addVehicle(Vehicle vehicle) async {
     try {
       await _db
           .from('vehicles')
           .insert(vehicle.toJson());
       
       await fetchVehicles();
+      return true;
     } catch (e) {
-      debugPrint("Erreur add vehicle : ${e.toString()}");
+      debugPrint("ERREUR AJOUT VEHICULE : ${e.toString()}");
+      return false;
     }
   }
 
