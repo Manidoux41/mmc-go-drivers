@@ -11,24 +11,34 @@ class PdfService {
   static Future<File?> imageToPdf(File imageFile) async {
     if (kIsWeb) return null;
 
-    final pdf = pw.Document();
-    final image = pw.MemoryImage(imageFile.readAsBytesSync());
+    try {
+      final pdf = pw.Document();
+      final imageBytes = await imageFile.readAsBytes();
+      final image = pw.MemoryImage(imageBytes);
 
-    pdf.addPage(
-      pw.Page(
-        pageFormat: PdfPageFormat.a4,
-        build: (pw.Context context) {
-          return pw.Center(
-            child: pw.Image(image, fit: pw.BoxFit.contain),
-          );
-        },
-      ),
-    );
+      pdf.addPage(
+        pw.Page(
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.all(0),
+          build: (pw.Context context) {
+            return pw.FullPage(
+              ignoreMargins: true,
+              child: pw.Center(
+                child: pw.Image(image, fit: pw.BoxFit.contain),
+              ),
+            );
+          },
+        ),
+      );
 
-    final output = await getTemporaryDirectory();
-    final file = File("${output.path}/planning_${DateTime.now().millisecondsSinceEpoch}.pdf");
-    await file.writeAsBytes(await pdf.save());
-    return file;
+      final output = await getTemporaryDirectory();
+      final file = File("${output.path}/planning_${DateTime.now().millisecondsSinceEpoch}.pdf");
+      await file.writeAsBytes(await pdf.save());
+      return file;
+    } catch (e) {
+      debugPrint("PDF SERVICE ERROR : $e");
+      return null;
+    }
   }
   static Future<void> generateAndSharePlanning(DateTime date, List<PlanningActivity> activities) async {
     final pdf = pw.Document();

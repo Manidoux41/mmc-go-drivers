@@ -120,7 +120,7 @@ class LoginView extends StatelessWidget {
                               // Chargement initial des véhicules
                               final vehicleVM = Provider.of<VehicleViewModel>(context, listen: false);
                               vehicleVM.setCustomClient(viewModel.currentUser!.customSupabaseUrl, viewModel.currentUser!.customSupabaseAnonKey);
-                              vehicleVM.fetchVehicles();
+                              vehicleVM.fetchVehicles(ownerId: viewModel.currentUser!.id);
 
                               // Redirection systématique vers le Dashboard pour les utilisateurs déjà inscrits
                               Navigator.pushReplacement(

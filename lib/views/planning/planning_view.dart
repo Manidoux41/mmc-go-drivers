@@ -2,10 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
 import '../../viewmodels/planning_viewmodel.dart';
 import '../../viewmodels/login_viewmodel.dart';
+import '../../viewmodels/vehicle_viewmodel.dart';
 import '../../models/planning_activity.dart';
 import '../../models/subscription_tier.dart';
+import '../../models/vehicle.dart';
 import '../../services/pdf_service.dart';
 import '../../services/storage_service.dart';
 import '../navigation/navigation_view.dart';
@@ -22,7 +26,15 @@ class _PlanningViewState extends State<PlanningView> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<PlanningViewModel>(context, listen: false).fetchActivities();
+      final loginVM = Provider.of<LoginViewModel>(context, listen: false);
+      final user = loginVM.currentUser;
+      final planningVM = Provider.of<PlanningViewModel>(context, listen: false);
+      final vehicleVM = Provider.of<VehicleViewModel>(context, listen: false);
+      
+      if (user != null) {
+        planningVM.setCurrentDriver(user.id);
+        vehicleVM.fetchVehicles(ownerId: user.id);
+      }
     });
   }
 
@@ -113,7 +125,7 @@ class _PlanningViewState extends State<PlanningView> {
                 const SizedBox(height: 10),
                 FloatingActionButton(
                   heroTag: 'btn_scan_planning',
-                  onPressed: () => context.read<PlanningViewModel>().uploadPhotoPlanning(context.read<PlanningViewModel>().selectedDate),
+                  onPressed: () => _showDatePickerForPhoto(context),
                   backgroundColor: Theme.of(context).primaryColor,
                   child: const Icon(Icons.add_a_photo, color: Colors.white),
                 ),
@@ -126,14 +138,82 @@ class _PlanningViewState extends State<PlanningView> {
     );
   }
 
+  Future<void> _showDatePickerForPhoto(BuildContext context) async {
+    final currentSelectedDate = context.read<PlanningViewModel>().selectedDate;
+    final DateTime? pickedDate = await showDatePicker(
+      context: context,
+      initialDate: currentSelectedDate,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2030),
+      helpText: 'SÉLECTIONNEZ LA DATE DU PLANNING',
+      cancelText: 'ANNULER',
+      confirmText: 'CONTINUER',
+    );
+
+    if (pickedDate != null && context.mounted) {
+      _showPhotoSourceDialog(context, pickedDate);
+    }
+  }
+
+  void _showPhotoSourceDialog(BuildContext context, DateTime targetDate) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Wrap(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Text(
+                'Source pour le ${DateFormat('dd/MM/yyyy').format(targetDate)}',
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.camera_alt),
+              title: const Text('Prendre une photo (Appareil)'),
+              onTap: () {
+                Navigator.pop(context);
+                context.read<PlanningViewModel>().uploadPhotoPlanning(
+                  targetDate,
+                  source: ImageSource.camera,
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library),
+              title: const Text('Choisir un screenshot (Galerie)'),
+              onTap: () {
+                Navigator.pop(context);
+                context.read<PlanningViewModel>().uploadPhotoPlanning(
+                  targetDate,
+                  source: ImageSource.gallery,
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.picture_as_pdf, color: Colors.red),
+              title: const Text('Charger un fichier PDF'),
+              onTap: () {
+                Navigator.pop(context);
+                context.read<PlanningViewModel>().pickAndUploadPdf(targetDate);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _showManualAddMissionDialog(BuildContext context) {
     final titleController = TextEditingController();
     final departureController = TextEditingController();
     final arrivalController = TextEditingController();
     final descriptionController = TextEditingController();
+    
     DateTime startTime = DateTime.now().copyWith(hour: 8, minute: 0);
     DateTime endTime = DateTime.now().copyWith(hour: 10, minute: 0);
     bool syncCalendar = true;
+    Vehicle? selectedVehicle;
 
     showDialog(
       context: context,
@@ -151,6 +231,20 @@ class _PlanningViewState extends State<PlanningView> {
                   controller: descriptionController, 
                   decoration: const InputDecoration(labelText: 'Description / Notes (Optionnel)'),
                   maxLines: 2,
+                ),
+                const SizedBox(height: 10),
+                Consumer<VehicleViewModel>(
+                  builder: (context, vehicleVM, child) {
+                    if (vehicleVM.vehicles.isEmpty) {
+                      return const Text('Aucun véhicule enregistré', style: TextStyle(fontSize: 12, color: Colors.orange));
+                    }
+                    return DropdownButtonFormField<Vehicle>(
+                      value: selectedVehicle ?? vehicleVM.vehicles.first,
+                      decoration: const InputDecoration(labelText: 'Véhicule assigné'),
+                      items: vehicleVM.vehicles.map((v) => DropdownMenuItem(value: v, child: Text(v.registration))).toList(),
+                      onChanged: (v) => setDialogState(() => selectedVehicle = v),
+                    );
+                  },
                 ),
                 const SizedBox(height: 15),
                 ListTile(
@@ -185,6 +279,7 @@ class _PlanningViewState extends State<PlanningView> {
               onPressed: () async {
                 final loginVM = Provider.of<LoginViewModel>(context, listen: false);
                 final planningVM = Provider.of<PlanningViewModel>(context, listen: false);
+                final vehicleVM = Provider.of<VehicleViewModel>(context, listen: false);
                 
                 final activity = PlanningActivity(
                   id: '', 
@@ -195,6 +290,7 @@ class _PlanningViewState extends State<PlanningView> {
                   departure: departureController.text,
                   arrival: arrivalController.text,
                   description: descriptionController.text,
+                  vehicle: selectedVehicle ?? (vehicleVM.vehicles.isNotEmpty ? vehicleVM.vehicles.first : null),
                   driverId: loginVM.currentUser?.id,
                 );
 
@@ -244,20 +340,30 @@ class _PlanningViewState extends State<PlanningView> {
     final timeFormat = DateFormat('HH:mm');
     final accentColor = _getAccentColor(context, activity.type);
     final vm = context.read<PlanningViewModel>();
+    final isPhoto = activity.type == ActivityType.photo_planning;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isPhoto ? Colors.teal.shade50 : Colors.white,
         borderRadius: BorderRadius.circular(15),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 5, offset: const Offset(0, 2))],
-        border: Border(left: BorderSide(color: accentColor, width: 6)),
+        boxShadow: [
+          BoxShadow(
+            color: isPhoto ? Colors.teal.withValues(alpha: 0.2) : Colors.black.withValues(alpha: 0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 3)
+          )
+        ],
+        border: Border(
+          left: BorderSide(color: accentColor, width: isPhoto ? 10 : 6),
+        ),
       ),
       child: ListTile(
+        leading: isPhoto ? const CircleAvatar(backgroundColor: Colors.teal, child: Icon(Icons.picture_as_pdf, color: Colors.white)) : null,
         onTap: () {
           if (activity.type == ActivityType.photo_planning && activity.filePath != null) {
-            final url = StorageService.getPublicUrl(activity.filePath!);
-            launchUrl(Uri.parse(url));
+            final url = vm.getPublicUrl(activity.filePath!);
+            launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
           } else {
             _showActivityDetails(context, activity);
           }
@@ -273,7 +379,6 @@ class _PlanningViewState extends State<PlanningView> {
               style: TextStyle(fontWeight: FontWeight.bold, color: accentColor),
             ),
             const SizedBox(width: 8),
-            // Nouveau bouton d'édition direct
             IconButton(
               icon: const Icon(Icons.edit, size: 16, color: Colors.blue),
               constraints: const BoxConstraints(),
@@ -282,7 +387,6 @@ class _PlanningViewState extends State<PlanningView> {
               tooltip: 'Modifier',
             ),
             const SizedBox(width: 8),
-            // Nouveau bouton de suppression direct
             IconButton(
               icon: const Icon(Icons.delete_outline, size: 16, color: Colors.red),
               constraints: const BoxConstraints(),
@@ -372,8 +476,11 @@ class _PlanningViewState extends State<PlanningView> {
     } else {
       dateText = DateFormat('MMMM yyyy', locale).format(viewModel.selectedDate);
     }
-
-    if (dateText.isNotEmpty) {
+    
+    // Fallback if formatting fails or is empty
+    if (dateText.isEmpty) {
+      dateText = "${viewModel.selectedDate.day}/${viewModel.selectedDate.month}/${viewModel.selectedDate.year}";
+    } else {
       dateText = dateText[0].toUpperCase() + dateText.substring(1);
     }
 
@@ -434,9 +541,12 @@ class _PlanningViewState extends State<PlanningView> {
     final departureController = TextEditingController(text: activity.departure);
     final arrivalController = TextEditingController(text: activity.arrival);
     final descriptionController = TextEditingController(text: activity.description);
+    final vehicleVM = Provider.of<VehicleViewModel>(context, listen: false);
+    
     DateTime selectedDate = activity.startTime;
     DateTime startTime = activity.startTime;
     DateTime endTime = activity.endTime;
+    Vehicle? selectedVehicle = activity.vehicle;
 
     showDialog(
       context: context,
@@ -448,6 +558,14 @@ class _PlanningViewState extends State<PlanningView> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 TextField(controller: titleController, decoration: const InputDecoration(labelText: 'Titre')),
+                const SizedBox(height: 10),
+                if (vehicleVM.vehicles.isNotEmpty)
+                  DropdownButtonFormField<Vehicle>(
+                    value: selectedVehicle ?? vehicleVM.vehicles.first,
+                    decoration: const InputDecoration(labelText: 'Véhicule assigné'),
+                    items: vehicleVM.vehicles.map((v) => DropdownMenuItem(value: v, child: Text(v.registration))).toList(),
+                    onChanged: (v) => setDialogState(() => selectedVehicle = v),
+                  ),
                 ListTile(
                   title: const Text('Date', style: TextStyle(fontSize: 12)),
                   subtitle: Text(DateFormat('dd/MM/yyyy').format(selectedDate)),
@@ -497,6 +615,7 @@ class _PlanningViewState extends State<PlanningView> {
             ElevatedButton(
               onPressed: () async {
                 final planningVM = Provider.of<PlanningViewModel>(context, listen: false);
+                final vVM = Provider.of<VehicleViewModel>(context, listen: false);
                 
                 final updatedActivity = PlanningActivity(
                   id: activity.id,
@@ -508,7 +627,7 @@ class _PlanningViewState extends State<PlanningView> {
                   arrival: arrivalController.text,
                   description: descriptionController.text,
                   driverId: activity.driverId,
-                  vehicle: activity.vehicle,
+                  vehicle: selectedVehicle ?? (vVM.vehicles.isNotEmpty ? vVM.vehicles.first : null),
                   filePath: activity.filePath,
                 );
 

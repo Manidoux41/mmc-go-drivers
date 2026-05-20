@@ -106,7 +106,7 @@ class _RegisterViewState extends State<RegisterView> {
 
                         // Chargement initial des véhicules
                         final vehicleVM = Provider.of<VehicleViewModel>(context, listen: false);
-                        vehicleVM.fetchVehicles();
+                        vehicleVM.fetchVehicles(ownerId: viewModel.currentUser!.id);
 
                         // Redirection vers le Paywall comme demandé pour les nouveaux utilisateurs sans forfait
                         Navigator.pushAndRemoveUntil(

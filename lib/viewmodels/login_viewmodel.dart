@@ -21,11 +21,15 @@ class LoginViewModel extends ChangeNotifier {
   }
 
   Future<void> _checkExistingSession() async {
-    final session = SupabaseService.client.auth.currentSession;
-    if (session?.user != null) {
-      await _fetchProfile(session!.user.id);
-      // Le Dashboard s'occupera de la synchronisation via refreshProfile au démarrage
-      notifyListeners();
+    try {
+      final session = SupabaseService.client.auth.currentSession;
+      if (session?.user != null) {
+        await _fetchProfile(session!.user.id);
+        // Le Dashboard s'occupera de la synchronisation via refreshProfile au démarrage
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint("Erreur vérification session : $e");
     }
   }
 
@@ -121,14 +125,20 @@ class LoginViewModel extends ChangeNotifier {
       await _fetchProfile(_currentUser!.id);
       
       if (_currentUser != null && context.mounted) {
-        // Re-synchronisation des clients décentralisés si passage en Diamant
         final planningVM = Provider.of<PlanningViewModel>(context, listen: false);
         final vehicleVM = Provider.of<VehicleViewModel>(context, listen: false);
         final fleetVM = Provider.of<FleetAdminViewModel>(context, listen: false);
         
+        // Configuration des clients (Diamant vs Master)
         planningVM.setCustomClient(_currentUser!.customSupabaseUrl, _currentUser!.customSupabaseAnonKey);
         vehicleVM.setCustomClient(_currentUser!.customSupabaseUrl, _currentUser!.customSupabaseAnonKey);
         fleetVM.setCustomClient(_currentUser!.customSupabaseUrl, _currentUser!.customSupabaseAnonKey);
+
+        // Crucial : Définir le conducteur actuel pour le planning
+        planningVM.setCurrentDriver(_currentUser!.id);
+
+        // Forcer la récupération des véhicules pour cet utilisateur précis
+        await vehicleVM.fetchVehicles(ownerId: _currentUser!.id);
       }
 
       notifyListeners();

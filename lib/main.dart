@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'viewmodels/login_viewmodel.dart';
@@ -23,17 +24,28 @@ void main() async {
     // Initialisation des services avec gestion d'erreur isolée
     await _initServices();
 
-    final vehicleVM = VehicleViewModel();
-    
     runApp(
       MultiProvider(
         providers: [
           ChangeNotifierProvider(create: (_) => LoginViewModel()),
-          ChangeNotifierProvider(create: (_) => vehicleVM),
-          ChangeNotifierProvider(create: (_) => PlanningViewModel(vehicleViewModel: vehicleVM)),
+          ChangeNotifierProvider(create: (_) => VehicleViewModel()),
+          ChangeNotifierProxyProvider<VehicleViewModel, PlanningViewModel>(
+            create: (context) => PlanningViewModel(
+              vehicleViewModel: Provider.of<VehicleViewModel>(context, listen: false),
+            ),
+            update: (_, __, planningVM) => planningVM!,
+          ),
+          ChangeNotifierProxyProvider<LoginViewModel, SubscriptionViewModel>(
+            create: (_) => SubscriptionViewModel(),
+            update: (_, loginVM, subVM) {
+              if (loginVM.currentUser != null) {
+                subVM!.setUser(loginVM.currentUser!);
+              }
+              return subVM!;
+            },
+          ),
           ChangeNotifierProvider(create: (_) => NavigationViewModel()),
           ChangeNotifierProvider(create: (_) => DocumentViewModel()),
-          ChangeNotifierProvider(create: (_) => SubscriptionViewModel()),
           ChangeNotifierProvider(create: (_) => FleetAdminViewModel()),
           ChangeNotifierProvider(create: (_) => SuperAdminViewModel()),
         ],
@@ -71,6 +83,15 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'MMC Go Drivers',
       debugShowCheckedModeBanner: false,
+      locale: const Locale('fr', 'FR'),
+      supportedLocales: const [
+        Locale('fr', 'FR'),
+      ],
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(
