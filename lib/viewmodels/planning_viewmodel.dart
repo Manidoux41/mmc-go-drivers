@@ -63,57 +63,29 @@ class PlanningViewModel extends ChangeNotifier {
   }
 
   Future<void> fetchActivities() async {
-    // Si le chauffeur n'est pas encore défini, on ne peut pas charger son planning
-    if (_currentDriverId == null) {
-      debugPrint("FETCH SKIPPED : DriverId is null");
-      return;
-    }
+    if (_currentDriverId == null) return;
     
     _isLoading = true;
     notifyListeners();
 
     try {
-      debugPrint(">>> SYNC START : Récupération pour $_currentDriverId");
+      final response = await _db
+          .from('activities')
+          .select()
+          .eq('driver_id', _currentDriverId!);
       
-      // On récupère tout pour être sûr de ne rien rater
-      final response = await _db.from('activities').select();
-      final List<dynamic> allData = response as List;
-      
-      debugPrint(">>> SYNC INFO : ${allData.length} lignes totales en BDD");
-
-      _activities = allData
-          .where((json) {
-            // Filtrage manuel pour être sûr de l'ID
-            final String? dbDriverId = json['driver_id']?.toString();
-            return dbDriverId == _currentDriverId;
-          })
-          .map((json) {
-            try {
-              final vehicleId = json['vehicle_id'];
-              Vehicle? vehicle;
-              if (vehicleId != null && vehicleViewModel.vehicles.isNotEmpty) {
-                try {
-                  vehicle = vehicleViewModel.vehicles.firstWhere((v) => v.id == vehicleId);
-                } catch (_) {}
-              }
-              return PlanningActivity.fromJson(json, vehicle: vehicle);
-            } catch (e) {
-              debugPrint(">>> ERROR PARSING : $e");
-              // Fallback minimal en cas d'erreur de parsing JSON
-              return PlanningActivity(
-                id: json['id']?.toString() ?? 'err',
-                title: json['title']?.toString() ?? 'Erreur',
-                type: ActivityType.trip,
-                startTime: DateTime.tryParse(json['start_time']?.toString() ?? '') ?? DateTime.now(),
-                endTime: DateTime.tryParse(json['end_time']?.toString() ?? '') ?? DateTime.now(),
-                driverId: _currentDriverId,
-              );
-            }
-          }).toList();
-      
-      debugPrint(">>> SYNC SUCCESS : ${_activities.length} activités pour vous");
+      _activities = (response as List).map((json) {
+        final vehicleId = json['vehicle_id'];
+        Vehicle? vehicle;
+        if (vehicleId != null && vehicleViewModel.vehicles.isNotEmpty) {
+          try {
+            vehicle = vehicleViewModel.vehicles.firstWhere((v) => v.id == vehicleId);
+          } catch (_) {}
+        }
+        return PlanningActivity.fromJson(json, vehicle: vehicle);
+      }).toList();
     } catch (e) {
-      debugPrint(">>> SYNC ERROR : $e");
+      debugPrint("FETCH ERROR : $e");
     }
 
     _isLoading = false;
@@ -185,28 +157,31 @@ class PlanningViewModel extends ChangeNotifier {
 
   Future<String?> _uploadToClientStorage(SupabaseStorageClient storage, File file, String fileName) async {
     try {
-      // 1. Vérifier si le bucket existe, sinon le créer
-      final List<Bucket> buckets = await storage.listBuckets();
-      final bool exists = buckets.any((b) => b.id == 'plannings');
+      // 1. On tente l'upload direct (plus simple et évite les erreurs 403 de vérification de bucket)
+      // On utilise upsert: true pour écraser si le fichier existe déjà (évite les erreurs de doublons)
+      await storage.from('plannings').upload(
+        fileName, 
+        file,
+        fileOptions: const FileOptions(cacheControl: '3600', upsert: true),
+      );
       
-      if (!exists) {
-        debugPrint("STORAGE : Création du bucket 'plannings'...");
-        await storage.createBucket('plannings', const BucketOptions(public: true));
-      }
-      
-      // 2. Upload du fichier
-      final path = await storage.from('plannings').upload(fileName, file);
-      debugPrint("STORAGE : Upload réussi sur le chemin : $path");
-      return path;
+      debugPrint("STORAGE SUCCESS : $fileName");
+      return fileName;
     } catch (e) {
-      debugPrint('STORAGE ERROR FATALE : $e');
-      // Tentative désespérée : si l'erreur était juste la vérification, essayer l'upload direct
-      try {
-        final path = await storage.from('plannings').upload(fileName, file);
-        return path;
-      } catch (_) {
-        return null;
+      debugPrint('STORAGE ERROR : $e');
+      
+      // Tentative de secours : Si l'erreur est que le bucket n'existe pas (404), on tente de le créer une fois
+      if (e.toString().contains('404')) {
+        try {
+          await storage.createBucket('plannings', const BucketOptions(public: true));
+          // Réessayer l'upload après création
+          await storage.from('plannings').upload(fileName, file);
+          return fileName;
+        } catch (innerError) {
+          debugPrint("STORAGE FATAL : Impossible de créer le bucket : $innerError");
+        }
       }
+      return null;
     }
   }
 
@@ -320,15 +295,11 @@ class PlanningViewModel extends ChangeNotifier {
   }
 
   List<PlanningActivity> get filteredActivities {
-    debugPrint("FILTERING for date: $_selectedDate");
-    debugPrint("TOTAL ACTIVITIES available: ${_activities.length}");
-    
     final results = _activities.where((activity) {
       if (_viewMode == PlanningViewMode.day) {
-        final isSameDay = activity.startTime.year == _selectedDate.year &&
+        return activity.startTime.year == _selectedDate.year &&
             activity.startTime.month == _selectedDate.month &&
             activity.startTime.day == _selectedDate.day;
-        return isSameDay;
       } else if (_viewMode == PlanningViewMode.week) {
         final weekStart = _selectedDate.subtract(Duration(days: _selectedDate.weekday - 1)).copyWith(hour: 0, minute: 0, second: 0, millisecond: 0);
         final weekEnd = weekStart.add(const Duration(days: 7));
@@ -339,8 +310,6 @@ class PlanningViewModel extends ChangeNotifier {
             activity.startTime.month == _selectedDate.month;
       }
     }).toList();
-    
-    debugPrint("FILTERED RESULTS: ${results.length}");
     
     return results..sort((a, b) {
       if (a.type == ActivityType.photo_planning) return -1;
