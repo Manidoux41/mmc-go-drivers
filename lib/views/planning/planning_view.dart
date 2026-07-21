@@ -13,6 +13,7 @@ import '../../models/vehicle.dart';
 import '../../services/pdf_service.dart';
 import '../../services/storage_service.dart';
 import '../navigation/navigation_view.dart';
+import 'pdf_viewer_page.dart';
 
 class PlanningView extends StatefulWidget {
   const PlanningView({super.key});
@@ -363,7 +364,15 @@ class _PlanningViewState extends State<PlanningView> {
         onTap: () {
           if (activity.type == ActivityType.photo_planning && activity.filePath != null) {
             final url = vm.getPublicUrl(activity.filePath!);
-            launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => PdfViewerPage(
+                  pdfUrl: url,
+                  title: activity.title,
+                ),
+              ),
+            );
           } else {
             _showActivityDetails(context, activity);
           }
