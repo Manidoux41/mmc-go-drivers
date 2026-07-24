@@ -11,7 +11,7 @@ import 'viewmodels/subscription_viewmodel.dart';
 import 'viewmodels/fleet_admin_viewmodel.dart';
 import 'viewmodels/super_admin_viewmodel.dart';
 import 'services/stripe_service.dart';
-import 'services/supabase_service.dart';
+import 'package:flutter01/services/mongo_service.dart';
 import 'views/navigation/navigation_view.dart';
 
 void main() async {
@@ -60,11 +60,11 @@ void main() async {
 }
 
 Future<void> _initServices() async {
-  // Supabase
+  // MongoDB
   try {
-    await SupabaseService.init();
+    await MongoService.init();
   } catch (e) {
-    debugPrint('Supabase Error: $e');
+    debugPrint('MongoDB Error: $e');
   }
 
   // Stripe

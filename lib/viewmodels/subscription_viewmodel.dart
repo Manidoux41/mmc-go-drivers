@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:mongo_dart/mongo_dart.dart' show where;
 import '../models/subscription_tier.dart';
 import '../models/user.dart';
-import '../services/supabase_service.dart';
+import 'package:flutter01/services/mongo_service.dart';
 import '../services/stripe_service.dart';
 
 class SubscriptionViewModel extends ChangeNotifier {
@@ -37,14 +38,14 @@ class SubscriptionViewModel extends ChangeNotifier {
     if (success && _currentUser != null) {
       _currentUser!.tier = tier;
       
-      // Mise à jour réelle dans Supabase
+      // Mise à jour réelle dans MongoDB
       try {
-        await SupabaseService.client
-            .from('profiles')
-            .update({'tier': tier.name.toLowerCase()})
-            .eq('id', _currentUser!.id);
+        await MongoService.profiles.updateOne(
+          where.eq('id', _currentUser!.id),
+          {'\$set': {'tier': tier.name.toLowerCase()}},
+        );
       } catch (e) {
-        debugPrint("Erreur mise à jour tier Supabase : ${e.toString()}");
+        debugPrint("Erreur mise à jour tier MongoDB : ${e.toString()}");
       }
     }
 

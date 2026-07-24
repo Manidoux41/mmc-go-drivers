@@ -126,8 +126,7 @@ class _ManageDriversTabState extends State<_ManageDriversTab> {
                     onChanged: (val) => setDialogState(() => makeDiamond = val!),
                   ),
                   if (makeDiamond) ...[
-                    TextField(controller: urlController, decoration: const InputDecoration(labelText: 'URL Supabase Client')),
-                    TextField(controller: keyController, decoration: const InputDecoration(labelText: 'Clé Anon Client')),
+                    TextField(controller: urlController, decoration: const InputDecoration(labelText: 'URI MongoDB Client')),
                   ],
                 ],
               ],
@@ -146,8 +145,7 @@ class _ManageDriversTabState extends State<_ManageDriversTab> {
                     fullNameController.text,
                     passwordController.text,
                     tier: makeDiamond ? SubscriptionTier.diamond : SubscriptionTier.professional,
-                    customUrl: makeDiamond ? urlController.text : admin?.customSupabaseUrl,
-                    customKey: makeDiamond ? keyController.text : admin?.customSupabaseAnonKey,
+                    customUri: makeDiamond ? urlController.text : admin?.customMongoUri,
                   );
                   if (context.mounted) {
                     Navigator.pop(context);

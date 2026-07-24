@@ -1,17 +1,14 @@
 import 'package:universal_io/io.dart';
-import 'supabase_service.dart';
 
 class StorageService {
-  static const String _bucketName = 'plannings';
-
+  // En attendant une solution de stockage cloud (S3, Firebase, GridFS),
+  // On gère les chemins de fichiers locaux.
+  
   static Future<String?> uploadPlanningPdf(File file, String fileName) async {
     try {
-      final String path = await SupabaseService.client.storage
-          .from(_bucketName)
-          .upload(fileName, file);
-      
-      // Retourne l'URL publique ou le chemin
-      return path;
+      // Pour l'instant, on retourne simplement le path local du fichier
+      // Dans une version finale, on uploaderait vers S3 ou GridFS
+      return file.path;
     } catch (e) {
       print('Erreur upload Storage: $e');
       return null;
@@ -19,6 +16,7 @@ class StorageService {
   }
 
   static String getPublicUrl(String path) {
-    return SupabaseService.client.storage.from(_bucketName).getPublicUrl(path);
+    // Retourne le path tel quel pour un usage local
+    return path;
   }
 }

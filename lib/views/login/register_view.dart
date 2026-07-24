@@ -96,23 +96,27 @@ class _RegisterViewState extends State<RegisterView> {
                       if (!mounted) return;
 
                       if (success) {
-                        // Synchronisation du user avec le SubscriptionViewModel
+                        // ... existing success logic ...
                         final subVM = Provider.of<SubscriptionViewModel>(context, listen: false);
                         subVM.setUser(viewModel.currentUser!);
 
-                        // Synchronisation avec le PlanningViewModel pour le calendrier individuel
                         final planningVM = Provider.of<PlanningViewModel>(context, listen: false);
                         planningVM.setCurrentDriver(viewModel.currentUser!.id);
 
-                        // Chargement initial des véhicules
                         final vehicleVM = Provider.of<VehicleViewModel>(context, listen: false);
                         vehicleVM.fetchVehicles(ownerId: viewModel.currentUser!.id);
 
-                        // Redirection vers le Paywall comme demandé pour les nouveaux utilisateurs sans forfait
                         Navigator.pushAndRemoveUntil(
                           context,
                           MaterialPageRoute(builder: (context) => const PaywallView()),
                           (route) => false,
+                        );
+                      } else if (viewModel.errorMessage != null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(viewModel.errorMessage!),
+                            backgroundColor: Colors.red,
+                          ),
                         );
                       }
                     },

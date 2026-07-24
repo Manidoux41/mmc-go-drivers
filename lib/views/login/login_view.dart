@@ -108,24 +108,28 @@ class LoginView extends StatelessWidget {
                             final success = await viewModel.login();
 
                             if (success && context.mounted) {
-                              // Synchronisation du user avec le SubscriptionViewModel
+                              // ... existing success logic ...
                               final subVM = Provider.of<SubscriptionViewModel>(context, listen: false);
                               subVM.setUser(viewModel.currentUser!);
 
-                              // Synchronisation avec le PlanningViewModel pour le calendrier individuel
                               final planningVM = Provider.of<PlanningViewModel>(context, listen: false);
-                              planningVM.setCustomClient(viewModel.currentUser!.customSupabaseUrl, viewModel.currentUser!.customSupabaseAnonKey);
+                              planningVM.setCustomClient(viewModel.currentUser!.customMongoUri);
                               planningVM.setCurrentDriver(viewModel.currentUser!.id);
 
-                              // Chargement initial des véhicules
                               final vehicleVM = Provider.of<VehicleViewModel>(context, listen: false);
-                              vehicleVM.setCustomClient(viewModel.currentUser!.customSupabaseUrl, viewModel.currentUser!.customSupabaseAnonKey);
+                              vehicleVM.setCustomClient(viewModel.currentUser!.customMongoUri);
                               vehicleVM.fetchVehicles(ownerId: viewModel.currentUser!.id);
 
-                              // Redirection systématique vers le Dashboard pour les utilisateurs déjà inscrits
                               Navigator.pushReplacement(
                                 context,
                                 MaterialPageRoute(builder: (context) => const DashboardView()),
+                              );
+                            } else if (viewModel.errorMessage != null && context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(viewModel.errorMessage!),
+                                  backgroundColor: Colors.red,
+                                ),
                               );
                             }
                           },

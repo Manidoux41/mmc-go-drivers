@@ -120,8 +120,7 @@ class _ManageGlobalUsersTabState extends State<_ManageGlobalUsersTab> {
   }
 
   Future<void> _changeTier(BuildContext context, SuperAdminViewModel vm, User user) async {
-    final urlController = TextEditingController(text: user.customSupabaseUrl);
-    final keyController = TextEditingController(text: user.customSupabaseAnonKey);
+    final urlController = TextEditingController(text: user.customMongoUri);
     SubscriptionTier selectedTier = user.tier;
 
     return showDialog<void>(
@@ -150,7 +149,7 @@ class _ManageGlobalUsersTabState extends State<_ManageGlobalUsersTab> {
                       Expanded(
                         child: TextField(
                           controller: urlController,
-                          decoration: const InputDecoration(labelText: 'URL Supabase Client', border: OutlineInputBorder()),
+                          decoration: const InputDecoration(labelText: 'URI MongoDB Client', border: OutlineInputBorder()),
                         ),
                       ),
                       IconButton(
@@ -158,24 +157,6 @@ class _ManageGlobalUsersTabState extends State<_ManageGlobalUsersTab> {
                         onPressed: () async {
                           final data = await Clipboard.getData(Clipboard.kTextPlain);
                           if (data?.text != null) urlController.text = data!.text!;
-                        },
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: keyController,
-                          decoration: const InputDecoration(labelText: 'Clé Anon Client', border: OutlineInputBorder()),
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.content_paste),
-                        onPressed: () async {
-                          final data = await Clipboard.getData(Clipboard.kTextPlain);
-                          if (data?.text != null) keyController.text = data!.text!;
                         },
                       ),
                     ],
@@ -191,8 +172,7 @@ class _ManageGlobalUsersTabState extends State<_ManageGlobalUsersTab> {
                 final success = await vm.updateUserTier(
                   user.id, 
                   selectedTier, 
-                  customUrl: urlController.text.isEmpty ? null : urlController.text,
-                  customKey: keyController.text.isEmpty ? null : keyController.text,
+                  customUri: urlController.text.isEmpty ? null : urlController.text,
                 );
                 
                 if (context.mounted) {

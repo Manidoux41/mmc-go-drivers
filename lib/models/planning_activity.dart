@@ -15,7 +15,7 @@ class PlanningActivity {
   final List<Waypoint>? stops; // Pour les Billet Collectifs (BC)
   final Vehicle? vehicle; // Lien vers l'objet véhicule complet
   final String? driverId; // UUID du conducteur (Diamant)
-  final String? filePath; // Chemin vers le PDF sur Supabase Storage
+  final String? filePath; // Chemin vers le fichier
 
   PlanningActivity({
     required this.id,
@@ -78,7 +78,7 @@ class PlanningActivity {
     final newEnd = DateTime(date.year, date.month, date.day, endTime.hour, endTime.minute);
     
     return PlanningActivity(
-      id: '', // Nouvelle ID générée par Supabase
+      id: '', // Nouvelle ID
       title: title,
       type: type,
       startTime: newStart,

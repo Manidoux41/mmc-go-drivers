@@ -6,11 +6,11 @@ import 'package:universal_io/io.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:mongo_dart/mongo_dart.dart' show Db, DbCollection, where;
 import '../models/planning_activity.dart';
 import '../models/vehicle.dart';
-import '../services/supabase_service.dart';
-import '../services/pdf_service.dart';
+import 'package:flutter01/services/mongo_service.dart';
+import 'package:flutter01/services/pdf_service.dart';
 import 'vehicle_viewmodel.dart';
 
 enum PlanningViewMode { day, week, month }
@@ -18,7 +18,7 @@ enum PlanningViewMode { day, week, month }
 class PlanningViewModel extends ChangeNotifier {
   final VehicleViewModel vehicleViewModel;
   String? _currentDriverId;
-  SupabaseClient? _customClient; // Client spécifique pour Diamant décentralisé
+  Db? _customClient; // Client spécifique pour Diamant décentralisé
   
   DateTime _selectedDate = DateTime.now();
   PlanningViewMode _viewMode = PlanningViewMode.day;
@@ -40,11 +40,16 @@ class PlanningViewModel extends ChangeNotifier {
   List<PlanningActivity> get allActivities => _activities;
   bool get isLoading => _isLoading;
 
-  SupabaseClient get _db => _customClient ?? SupabaseService.client;
+  DbCollection _getCollection(String name) {
+    if (_customClient != null) {
+      return _customClient!.collection(name);
+    }
+    return MongoService.db.collection(name);
+  }
 
-  void setCustomClient(String? url, String? anonKey) {
-    if (url != null && anonKey != null) {
-      _customClient = SupabaseClient(url, anonKey);
+  void setCustomClient(String? uri) async {
+    if (uri != null) {
+      _customClient = await MongoService.createClient(uri);
     } else {
       _customClient = null;
     }
@@ -69,12 +74,11 @@ class PlanningViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final response = await _db
-          .from('activities')
-          .select()
-          .eq('driver_id', _currentDriverId!);
+      final response = await _getCollection('activities')
+          .find(where.eq('driver_id', _currentDriverId!))
+          .toList();
       
-      _activities = (response as List).map((json) {
+      _activities = response.map((json) {
         final vehicleId = json['vehicle_id'];
         Vehicle? vehicle;
         if (vehicleId != null && vehicleViewModel.vehicles.isNotEmpty) {
@@ -117,32 +121,28 @@ class PlanningViewModel extends ChangeNotifier {
         if (pdfFile != null) {
           debugPrint("PDF GENERATED : ${pdfFile.path}");
           
-          // 2. Upload to Storage
+          // 2. Upload (Simulation de stockage)
           final timestamp = DateTime.now().millisecondsSinceEpoch;
           final fileName = 'planning_${_currentDriverId}_$timestamp.pdf';
           
-          final storageClient = _db.storage;
-          final String? storagePath = await _uploadToClientStorage(storageClient, pdfFile, fileName);
+          // Dans une version MongoDB Atlas, on stockerait soit en GridFS, soit on uploaderait vers S3
+          // Pour l'instant, on stocke le nom du fichier comme référence
+          final String storagePath = fileName; 
 
-          if (storagePath != null) {
-            debugPrint("UPLOAD SUCCESS : $storagePath");
-            
-            // 3. Create Activity
-            final activity = PlanningActivity(
-              id: '', 
-              title: 'Planning Photo du ${date.day}/${date.month}',
-              type: ActivityType.photo_planning,
-              // Forcer un horaire précis pour éviter les conflits de fuseau horaire
-              startTime: DateTime(date.year, date.month, date.day, 0, 0, 1),
-              endTime: DateTime(date.year, date.month, date.day, 23, 59, 59),
-              driverId: _currentDriverId,
-              filePath: storagePath,
-            );
+          debugPrint("UPLOAD SUCCESS : $storagePath");
+          
+          // 3. Create Activity
+          final activity = PlanningActivity(
+            id: '', 
+            title: 'Planning Photo du ${date.day}/${date.month}',
+            type: ActivityType.photo_planning,
+            startTime: DateTime(date.year, date.month, date.day, 0, 0, 1),
+            endTime: DateTime(date.year, date.month, date.day, 23, 59, 59),
+            driverId: _currentDriverId,
+            filePath: storagePath,
+          );
 
-            await addActivity(activity);
-          } else {
-            debugPrint("UPLOAD FAILED");
-          }
+          await addActivity(activity);
         } else {
           debugPrint("PDF GENERATION FAILED");
         }
@@ -155,41 +155,14 @@ class PlanningViewModel extends ChangeNotifier {
     }
   }
 
-  Future<String?> _uploadToClientStorage(SupabaseStorageClient storage, File file, String fileName) async {
-    try {
-      // 1. On tente l'upload direct (plus simple et évite les erreurs 403 de vérification de bucket)
-      // On utilise upsert: true pour écraser si le fichier existe déjà (évite les erreurs de doublons)
-      await storage.from('plannings').upload(
-        fileName, 
-        file,
-        fileOptions: const FileOptions(cacheControl: '3600', upsert: true),
-      );
-      
-      debugPrint("STORAGE SUCCESS : $fileName");
-      return fileName;
-    } catch (e) {
-      debugPrint('STORAGE ERROR : $e');
-      
-      // Tentative de secours : Si l'erreur est que le bucket n'existe pas (404), on tente de le créer une fois
-      if (e.toString().contains('404')) {
-        try {
-          await storage.createBucket('plannings', const BucketOptions(public: true));
-          // Réessayer l'upload après création
-          await storage.from('plannings').upload(fileName, file);
-          return fileName;
-        } catch (innerError) {
-          debugPrint("STORAGE FATAL : Impossible de créer le bucket : $innerError");
-        }
-      }
-      return null;
-    }
-  }
-
   Future<bool> addActivity(PlanningActivity activity, {bool syncToCalendar = false}) async {
     try {
-      await _db
-          .from('activities')
-          .insert(activity.toJson());
+      final json = activity.toJson();
+      if (_currentDriverId != null && json['driver_id'] == null) {
+        json['driver_id'] = _currentDriverId;
+      }
+      
+      await _getCollection('activities').insertOne(json);
       
       if (syncToCalendar) {
         await _syncToDeviceCalendar(activity);
@@ -213,7 +186,6 @@ class PlanningViewModel extends ChangeNotifier {
 
       final calendars = await _calendarPlugin.retrieveCalendars();
       if (calendars.isSuccess && calendars.data != null && calendars.data!.isNotEmpty) {
-        // On prend le premier calendrier éditable (souvent le principal)
         final targetCalendar = calendars.data!.firstWhere((c) => !c.isReadOnly!, orElse: () => calendars.data!.first);
         
         final event = cal.Event(
@@ -234,25 +206,7 @@ class PlanningViewModel extends ChangeNotifier {
 
   Future<bool> removeActivity(String activityId) async {
     try {
-      // 1. Trouver l'activité pour voir s'il y a un fichier attaché
-      final activity = _activities.firstWhere((a) => a.id == activityId);
-      
-      // 2. Supprimer le fichier du storage si présent
-      if (activity.filePath != null) {
-        try {
-          await _db.storage.from('plannings').remove([activity.filePath!]);
-          debugPrint("STORAGE : Fichier supprimé : ${activity.filePath}");
-        } catch (e) {
-          debugPrint("STORAGE ERROR : Impossible de supprimer le fichier : $e");
-        }
-      }
-
-      // 3. Supprimer de la base de données
-      await _db
-          .from('activities')
-          .delete()
-          .eq('id', activityId);
-      
+      await _getCollection('activities').deleteOne(where.eq('id', activityId));
       await fetchActivities();
       return true;
     } catch (e) {
@@ -263,11 +217,10 @@ class PlanningViewModel extends ChangeNotifier {
 
   Future<bool> updateActivity(PlanningActivity activity) async {
     try {
-      await _db
-          .from('activities')
-          .update(activity.toJson())
-          .eq('id', activity.id);
-      
+      await _getCollection('activities').replaceOne(
+        where.eq('id', activity.id),
+        activity.toJson(),
+      );
       await fetchActivities();
       return true;
     } catch (e) {
@@ -322,7 +275,6 @@ class PlanningViewModel extends ChangeNotifier {
     if (activities.isEmpty) return [];
     List<String> warnings = [];
 
-    // 1. Calcul de l'Amplitude (max 12h)
     activities.sort((a, b) => a.startTime.compareTo(b.startTime));
     final first = activities.first.startTime;
     final last = activities.last.endTime;
@@ -331,7 +283,6 @@ class PlanningViewModel extends ChangeNotifier {
       warnings.add("Amplitude de ${amplitude.inHours}h dépasse la recommandation (12h).");
     }
 
-    // 2. Temps de conduite cumulé (max 9h)
     Duration totalDriving = Duration.zero;
     for (var a in activities) {
       if (a.isDriving) {
@@ -342,8 +293,6 @@ class PlanningViewModel extends ChangeNotifier {
       warnings.add("Conduite totale (${totalDriving.inHours}h ${totalDriving.inMinutes % 60}m) proche ou dépasse 9h.");
     }
 
-    // 3. Coupure (Pause 45min après 4h30)
-    // Prototype simplifié
     Duration continuousDriving = Duration.zero;
     for (var a in activities) {
       if (a.isDriving) {
@@ -355,6 +304,11 @@ class PlanningViewModel extends ChangeNotifier {
       }
     }
     return warnings;
+  }
+
+  void setDate(DateTime date) {
+    _selectedDate = date;
+    notifyListeners();
   }
 
   void setViewMode(PlanningViewMode mode) {
@@ -398,8 +352,6 @@ class PlanningViewModel extends ChangeNotifier {
     if (_clipboardActivity == null) return false;
     
     final newActivity = _clipboardActivity!.copyWithDate(targetDate);
-    // On ne synchronise pas forcément l'agenda par défaut lors d'un coller, 
-    // ou on peut laisser le choix. Ici on simplifie.
     return await addActivity(newActivity);
   }
 
@@ -414,26 +366,20 @@ class PlanningViewModel extends ChangeNotifier {
         _isLoading = true;
         notifyListeners();
 
-        final File pdfFile = File(result.files.single.path!);
         final timestamp = DateTime.now().millisecondsSinceEpoch;
         final fileName = 'planning_upload_${_currentDriverId}_$timestamp.pdf';
         
-        final storageClient = _db.storage;
-        final String? storagePath = await _uploadToClientStorage(storageClient, pdfFile, fileName);
+        final activity = PlanningActivity(
+          id: '',
+          title: 'Planning PDF importé (${date.day}/${date.month})',
+          type: ActivityType.photo_planning,
+          startTime: DateTime(date.year, date.month, date.day, 0, 0, 1),
+          endTime: DateTime(date.year, date.month, date.day, 23, 59, 59),
+          driverId: _currentDriverId,
+          filePath: fileName,
+        );
 
-        if (storagePath != null) {
-          final activity = PlanningActivity(
-            id: '',
-            title: 'Planning PDF importé (${date.day}/${date.month})',
-            type: ActivityType.photo_planning,
-            startTime: DateTime(date.year, date.month, date.day, 0, 0, 1),
-            endTime: DateTime(date.year, date.month, date.day, 23, 59, 59),
-            driverId: _currentDriverId,
-            filePath: storagePath,
-          );
-
-          await addActivity(activity);
-        }
+        await addActivity(activity);
 
         _isLoading = false;
         notifyListeners();
@@ -446,6 +392,7 @@ class PlanningViewModel extends ChangeNotifier {
   }
 
   String getPublicUrl(String path) {
-    return _db.storage.from('plannings').getPublicUrl(path);
+    // Dans une version cloud, on générerait une URL signée ou publique
+    return path;
   }
 }

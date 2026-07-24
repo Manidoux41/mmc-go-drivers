@@ -1,21 +1,26 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:mongo_dart/mongo_dart.dart' show Db, DbCollection, where;
 import '../models/vehicle.dart';
-import '../services/supabase_service.dart';
+import 'package:flutter01/services/mongo_service.dart';
 
 class VehicleViewModel extends ChangeNotifier {
   List<Vehicle> _vehicles = [];
   bool _isLoading = false;
-  SupabaseClient? _customClient;
+  Db? _customClient;
 
   List<Vehicle> get vehicles => _vehicles;
   bool get isLoading => _isLoading;
 
-  SupabaseClient get _db => _customClient ?? SupabaseService.client;
+  DbCollection _getCollection(String name) {
+    if (_customClient != null) {
+      return _customClient!.collection(name);
+    }
+    return MongoService.db.collection(name);
+  }
 
-  void setCustomClient(String? url, String? anonKey) {
-    if (url != null && anonKey != null) {
-      _customClient = SupabaseClient(url, anonKey);
+  void setCustomClient(String? uri) async {
+    if (uri != null) {
+      _customClient = await MongoService.createClient(uri);
     } else {
       _customClient = null;
     }
@@ -32,16 +37,19 @@ class VehicleViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final List<dynamic> data;
+      final List<Map<String, dynamic>> data;
       
-      // Syntaxe simplifiée au maximum pour éviter les erreurs de type Postgrest
       if (ownerId != null && _customClient == null) {
-        data = await _db.from('vehicles').select().eq('owner_id', ownerId).order('registration');
+        data = await _getCollection('vehicles')
+            .find(where.eq('owner_id', ownerId).sortBy('registration'))
+            .toList();
       } else {
-        data = await _db.from('vehicles').select().order('registration');
+        data = await _getCollection('vehicles')
+            .find(where.sortBy('registration'))
+            .toList();
       }
       
-      _vehicles = data.map((v) => Vehicle.fromJson(v as Map<String, dynamic>)).toList();
+      _vehicles = data.map((v) => Vehicle.fromJson(v)).toList();
       debugPrint("SYNCHRO : ${_vehicles.length} véhicules récupérés.");
     } catch (e) {
       debugPrint("ERREUR SYNCHRO VEHICULES : $e");
@@ -56,7 +64,7 @@ class VehicleViewModel extends ChangeNotifier {
       return false;
     }
     try {
-      await _db.from('vehicles').insert(vehicle.toJson());
+      await _getCollection('vehicles').insertOne(vehicle.toJson());
       await fetchVehicles(ownerId: vehicle.ownerId);
       return true;
     } catch (e) {
@@ -66,7 +74,10 @@ class VehicleViewModel extends ChangeNotifier {
 
   Future<bool> updateVehicle(Vehicle vehicle) async {
     try {
-      await _db.from('vehicles').update(vehicle.toJson()).eq('id', vehicle.id);
+      await _getCollection('vehicles').replaceOne(
+        where.eq('id', vehicle.id),
+        vehicle.toJson(),
+      );
       await fetchVehicles(ownerId: vehicle.ownerId);
       return true;
     } catch (e) {
@@ -76,7 +87,7 @@ class VehicleViewModel extends ChangeNotifier {
 
   Future<bool> deleteVehicle(String vehicleId, {String? ownerId}) async {
     try {
-      await _db.from('vehicles').delete().eq('id', vehicleId);
+      await _getCollection('vehicles').deleteOne(where.eq('id', vehicleId));
       await fetchVehicles(ownerId: ownerId);
       return true;
     } catch (e) {
@@ -86,7 +97,10 @@ class VehicleViewModel extends ChangeNotifier {
 
   Future<void> updateMileage(String vehicleId, double newMileage) async {
     try {
-      await _db.from('vehicles').update({'mileage': newMileage}).eq('id', vehicleId);
+      await _getCollection('vehicles').updateOne(
+        where.eq('id', vehicleId),
+        {'\$set': {'mileage': newMileage}},
+      );
       await fetchVehicles();
     } catch (e) {
       debugPrint("Erreur mileage: $e");

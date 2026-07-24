@@ -10,8 +10,10 @@ import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:mongo_dart/mongo_dart.dart' show where;
 import '../models/recorded_trip.dart';
-import '../services/supabase_service.dart';
+import 'package:flutter01/services/mongo_service.dart';
+import 'package:flutter01/services/mongo_auth_service.dart';
 import '../models/vehicle.dart';
 import '../models/planning_activity.dart' hide Waypoint;
 import '../models/route_option.dart';
@@ -93,16 +95,14 @@ class NavigationViewModel extends ChangeNotifier {
   }
 
   Future<void> _loadTripsFromDb() async {
-    final session = SupabaseService.client.auth.currentSession;
-    if (session?.user != null) {
+    final userId = await MongoAuthService.getCurrentSessionUserId();
+    if (userId != null) {
       try {
-        final data = await SupabaseService.client
-            .from('recorded_trips')
-            .select()
-            .eq('driver_id', session!.user.id)
-            .order('start_time', ascending: false);
+        final data = await MongoService.recordedTrips
+            .find(where.eq('driver_id', userId).sortBy('start_time', descending: true))
+            .toList();
         
-        _savedTrips = (data as List).map((json) => RecordedTrip.fromJson(json)).toList();
+        _savedTrips = data.map((json) => RecordedTrip.fromJson(json)).toList();
         notifyListeners();
       } catch (e) {
         debugPrint("TRACE : Erreur chargement historique : $e");
@@ -268,10 +268,10 @@ class NavigationViewModel extends ChangeNotifier {
     
     _savedTrips.add(newTrip);
 
-    // 3. Sauvegarder le NOM et les stats en BASE DE DONNÉES (Supabase)
+    // 3. Sauvegarder le NOM et les stats en BASE DE DONNÉES (MongoDB)
     if (userId != null) {
       try {
-        await SupabaseService.client.from('recorded_trips').insert({
+        await MongoService.recordedTrips.insertOne({
           'name': name,
           'driver_id': userId,
           'start_time': startTime.toIso8601String(),

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:mongo_dart/mongo_dart.dart' show where;
 import 'package:provider/provider.dart';
 import '../models/user.dart';
-import '../services/supabase_service.dart';
+import 'package:flutter01/services/mongo_service.dart';
+import 'package:flutter01/services/mongo_auth_service.dart';
 import 'planning_viewmodel.dart';
 import 'vehicle_viewmodel.dart';
 import 'fleet_admin_viewmodel.dart';
@@ -16,16 +18,18 @@ class LoginViewModel extends ChangeNotifier {
   bool _isLoading = false;
   bool get isLoading => _isLoading;
 
+  String? _errorMessage;
+  String? get errorMessage => _errorMessage;
+
   LoginViewModel() {
     _checkExistingSession();
   }
 
   Future<void> _checkExistingSession() async {
     try {
-      final session = SupabaseService.client.auth.currentSession;
-      if (session?.user != null) {
-        await _fetchProfile(session!.user.id);
-        // Le Dashboard s'occupera de la synchronisation via refreshProfile au démarrage
+      final userId = await MongoAuthService.getCurrentSessionUserId();
+      if (userId != null) {
+        await _fetchProfile(userId);
         notifyListeners();
       }
     } catch (e) {
@@ -40,24 +44,25 @@ class LoginViewModel extends ChangeNotifier {
     if (email.isEmpty || password.isEmpty) return false;
 
     _isLoading = true;
+    _errorMessage = null;
     notifyListeners();
 
     try {
-      final response = await SupabaseService.client.auth.signInWithPassword(
+      final profileData = await MongoAuthService.signIn(
         email: email,
         password: password,
       );
 
-      if (response.user != null) {
-        await _fetchProfile(response.user!.id);
-        
-        if (_currentUser != null) {
-          _isLoading = false;
-          notifyListeners();
-          return true;
-        }
+      if (profileData != null) {
+        _currentUser = User.fromJson(profileData);
+        _isLoading = false;
+        notifyListeners();
+        return true;
+      } else {
+        _errorMessage = "Identifiants incorrects";
       }
     } catch (e) {
+      _errorMessage = e.toString().replaceAll("Exception: ", "");
       debugPrint("Erreur connexion : ${e.toString()}");
     }
 
@@ -70,54 +75,55 @@ class LoginViewModel extends ChangeNotifier {
     final email = usernameController.text.trim();
     final password = passwordController.text.trim();
 
-    if (email.isEmpty || password.isEmpty) return false;
+    print('LoginViewModel: Starting register for $email');
+    if (email.isEmpty || password.isEmpty) {
+      _errorMessage = "L'email et le mot de passe sont requis";
+      notifyListeners();
+      return false;
+    }
     if (password.length < 6) {
-      debugPrint("Le mot de passe doit faire au moins 6 caractères");
+      _errorMessage = "Le mot de passe doit faire au moins 6 caractères";
+      notifyListeners();
       return false;
     }
 
     _isLoading = true;
+    _errorMessage = null;
     notifyListeners();
 
     try {
-      final response = await SupabaseService.client.auth.signUp(
+      print('LoginViewModel: Calling MongoAuthService.signUp...');
+      final profileData = await MongoAuthService.signUp(
         email: email,
         password: password,
-        data: {'full_name': fullName},
+        metadata: {
+          'full_name': fullName,
+          'tier': 'free',
+        },
       );
 
-      if (response.user != null) {
-        // Petit délai pour laisser le trigger Supabase créer le profil
-        await Future.delayed(const Duration(seconds: 1));
-        await _fetchProfile(response.user!.id);
-        
-        if (_currentUser == null) {
-          debugPrint("ATTENTION : Utilisateur créé mais profil introuvable. Avez-vous exécuté le script SQL ?");
-          // Création manuelle du profil en secours si RLS le permet
-          try {
-            await SupabaseService.client.from('profiles').insert({
-              'id': response.user!.id,
-              'username': email,
-              'full_name': fullName,
-              'tier': 'free'
-            });
-            await _fetchProfile(response.user!.id);
-          } catch (e) {
-            debugPrint("Échec de la création manuelle du profil : $e");
-          }
-        }
-        
+      if (profileData != null) {
+        print('LoginViewModel: signUp successful, mapping user...');
+        _currentUser = User.fromJson(profileData);
         _isLoading = false;
         notifyListeners();
-        return _currentUser != null;
+        return true;
+      } else {
+        _errorMessage = "Une erreur inconnue est survenue lors de l'inscription";
       }
     } catch (e) {
-      debugPrint("Erreur inscription : ${e.toString()}");
+      _errorMessage = e.toString().replaceAll("Exception: ", "");
+      print('LoginViewModel: Error during registration: $e');
     }
 
     _isLoading = false;
     notifyListeners();
     return false;
+  }
+
+  void clearError() {
+    _errorMessage = null;
+    notifyListeners();
   }
 
   Future<void> refreshProfile(BuildContext context) async {
@@ -130,9 +136,9 @@ class LoginViewModel extends ChangeNotifier {
         final fleetVM = Provider.of<FleetAdminViewModel>(context, listen: false);
         
         // Configuration des clients (Diamant vs Master)
-        planningVM.setCustomClient(_currentUser!.customSupabaseUrl, _currentUser!.customSupabaseAnonKey);
-        vehicleVM.setCustomClient(_currentUser!.customSupabaseUrl, _currentUser!.customSupabaseAnonKey);
-        fleetVM.setCustomClient(_currentUser!.customSupabaseUrl, _currentUser!.customSupabaseAnonKey);
+        planningVM.setCustomClient(_currentUser!.customMongoUri);
+        vehicleVM.setCustomClient(_currentUser!.customMongoUri);
+        fleetVM.setCustomClient(_currentUser!.customMongoUri);
 
         // Crucial : Définir le conducteur actuel pour le planning
         planningVM.setCurrentDriver(_currentUser!.id);
@@ -147,12 +153,7 @@ class LoginViewModel extends ChangeNotifier {
 
   Future<void> _fetchProfile(String userId) async {
     try {
-      // On sélectionne explicitement tous les champs pour être sûr d'avoir le tier à jour
-      final data = await SupabaseService.client
-          .from('profiles')
-          .select('id, username, full_name, tier, custom_supabase_url, custom_supabase_anon_key')
-          .eq('id', userId)
-          .maybeSingle();
+      final data = await MongoService.profiles.findOne(where.eq('id', userId));
       
       if (data != null) {
         _currentUser = User.fromJson(data);
@@ -164,7 +165,7 @@ class LoginViewModel extends ChangeNotifier {
   }
 
   Future<void> logout() async {
-    await SupabaseService.client.auth.signOut();
+    await MongoAuthService.signOut();
     _currentUser = null;
     notifyListeners();
   }

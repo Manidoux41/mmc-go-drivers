@@ -1,22 +1,28 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart' hide User;
+import 'package:mongo_dart/mongo_dart.dart' show Db, DbCollection, where;
 import '../models/user.dart';
 import '../models/subscription_tier.dart';
-import '../services/supabase_service.dart';
+import 'package:flutter01/services/mongo_service.dart';
+import 'package:flutter01/services/mongo_auth_service.dart';
 
 class FleetAdminViewModel extends ChangeNotifier {
   List<User> _drivers = [];
   bool _isLoading = false;
-  SupabaseClient? _customClient;
+  Db? _customClient;
 
   List<User> get drivers => _drivers;
   bool get isLoading => _isLoading;
 
-  SupabaseClient get _db => _customClient ?? SupabaseService.client;
+  DbCollection _getCollection(String name) {
+    if (_customClient != null) {
+      return _customClient!.collection(name);
+    }
+    return MongoService.db.collection(name);
+  }
 
-  void setCustomClient(String? url, String? anonKey) {
-    if (url != null && anonKey != null) {
-      _customClient = SupabaseClient(url, anonKey);
+  void setCustomClient(String? uri) async {
+    if (uri != null) {
+      _customClient = await MongoService.createClient(uri);
     } else {
       _customClient = null;
     }
@@ -33,12 +39,11 @@ class FleetAdminViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final data = await _db
-          .from('profiles')
-          .select()
-          .order('full_name');
+      final data = await _getCollection('profiles')
+          .find(where.sortBy('full_name'))
+          .toList();
       
-      _drivers = (data as List).map((d) => User.fromJson(d)).toList();
+      _drivers = data.map((d) => User.fromJson(d)).toList();
     } catch (e) {
       debugPrint("Erreur fetch drivers : ${e.toString()}");
     }
@@ -49,36 +54,32 @@ class FleetAdminViewModel extends ChangeNotifier {
 
   Future<bool> addDriver(String email, String fullName, String password, {
     SubscriptionTier tier = SubscriptionTier.professional,
-    String? customUrl,
-    String? customKey,
+    String? customUri,
   }) async {
     try {
       debugPrint("DECENTRALE : Création chauffeur $email");
 
-      // 1. Création du compte Auth dans le système central 
-      // Le trigger "handle_new_user" sur la DB MASTER créera automatiquement le profil Master
-      final AuthResponse res = await SupabaseService.client.auth.signUp(
+      // 1. Création du compte dans le système central
+      final profileData = await MongoAuthService.signUp(
         email: email,
         password: password,
-        data: {
+        metadata: {
           'full_name': fullName,
           'tier': tier.name.toLowerCase(),
-          'custom_supabase_url': customUrl, 
-          'custom_supabase_anon_key': customKey,
+          'custom_mongo_uri': customUri,
         },
       );
       
-      if (res.user != null) {
+      if (profileData != null) {
         // 2. Enregistrement du profil dans la base de données PRIVÉE de l'entreprise (Diamond)
         if (_customClient != null) {
           debugPrint("DECENTRALE : Enregistrement dans la base privée du client...");
-          await _customClient!.from('profiles').insert({
-            'id': res.user!.id,
+          await _customClient!.collection('profiles').insertOne({
+            'id': profileData['id'],
             'username': email,
             'full_name': fullName,
-            'tier': tier.name.toLowerCase(), // Accès 'professional' pour le chauffeur
-            'custom_supabase_url': customUrl,
-            'custom_supabase_anon_key': customKey,
+            'tier': tier.name.toLowerCase(),
+            'custom_mongo_uri': customUri,
           });
           debugPrint("DECENTRALE : Succès base privée");
         }
@@ -94,10 +95,7 @@ class FleetAdminViewModel extends ChangeNotifier {
 
   Future<bool> removeDriver(String driverId) async {
     try {
-      await _db
-          .from('profiles')
-          .delete()
-          .eq('id', driverId);
+      await _getCollection('profiles').deleteOne(where.eq('id', driverId));
       
       await fetchDrivers();
       return true;

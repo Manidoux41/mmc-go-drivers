@@ -1,30 +1,27 @@
 import 'subscription_tier.dart';
 
 class User {
-  final String id; // UUID de Supabase
+  final String id; // ID MongoDB (hex string)
   final String username; // Email ou identifiant
   final String? fullName;
   SubscriptionTier tier;
-  final String? customSupabaseUrl;
-  final String? customSupabaseAnonKey;
+  final String? customMongoUri;
 
   User({
     required this.id,
     required this.username,
     this.fullName,
     this.tier = SubscriptionTier.free,
-    this.customSupabaseUrl,
-    this.customSupabaseAnonKey,
+    this.customMongoUri,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
-      id: json['id'],
+      id: json['id'] ?? json['_id']?.toString() ?? '',
       username: json['username'] ?? '',
       fullName: json['full_name'],
       tier: _tierFromString(json['tier']),
-      customSupabaseUrl: json['custom_supabase_url'],
-      customSupabaseAnonKey: json['custom_supabase_anon_key'],
+      customMongoUri: json['custom_mongo_uri'],
     );
   }
 
@@ -46,8 +43,7 @@ class User {
       'username': username,
       'full_name': fullName,
       'tier': tier.name.toLowerCase(),
-      'custom_supabase_url': customSupabaseUrl,
-      'custom_supabase_anon_key': customSupabaseAnonKey,
+      'custom_mongo_uri': customMongoUri,
     };
   }
 
