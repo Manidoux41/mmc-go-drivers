@@ -61,6 +61,7 @@ android/app/build/
 # Gradle
 .gradle/
 .gradle_home/
+.android_home/
 
 # macOS
 .DS_Store
