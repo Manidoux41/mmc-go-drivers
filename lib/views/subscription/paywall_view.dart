@@ -1,20 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:flutter01/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
-import '../../models/subscription_tier.dart';
-import '../../viewmodels/subscription_viewmodel.dart';
-import '../../viewmodels/login_viewmodel.dart';
-import '../../models/user.dart';
-import '../../services/email_service.dart';
-import '../dashboard/dashboard_view.dart';
+import 'package:flutter01/models/subscription_tier.dart';
+import 'package:flutter01/viewmodels/subscription_viewmodel.dart';
+import 'package:flutter01/viewmodels/login_viewmodel.dart';
+import 'package:flutter01/models/user.dart';
+import 'package:flutter01/services/email_service.dart';
+import 'package:flutter01/views/dashboard/dashboard_view.dart';
+import 'package:flutter01/config/colors.dart';
 
 class PaywallView extends StatelessWidget {
   const PaywallView({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Choisir mon abonnement'),
+        title: Text(l10n.chooseSubscription),
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -29,6 +32,7 @@ class PaywallView extends StatelessWidget {
   }
 
   Widget _buildTierCard(BuildContext context, SubscriptionTier tier) {
+    final l10n = AppLocalizations.of(context)!;
     final viewModel = Provider.of<SubscriptionViewModel>(context, listen: false);
     final isCurrent = viewModel.currentUser?.tier == tier;
 
@@ -69,7 +73,7 @@ class PaywallView extends StatelessWidget {
             const SizedBox(height: 20),
             if (isCurrent)
               Center(
-                child: Text('ABONNEMENT ACTUEL',
+                child: Text(l10n.currentSubscription,
                     style: TextStyle(color: Theme.of(context).primaryColor, fontWeight: FontWeight.bold)),
               )
             else
@@ -81,7 +85,7 @@ class PaywallView extends StatelessWidget {
                   minimumSize: const Size.fromHeight(50),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
-                child: Text(tier == SubscriptionTier.free ? 'RESTER ICI' : (tier == SubscriptionTier.diamond ? 'NOUS CONTACTER' : 'S\'ABONNER')),
+                child: Text(tier == SubscriptionTier.free ? l10n.stayHere : (tier == SubscriptionTier.diamond ? l10n.contactUs : l10n.subscribeAction)),
               ),
           ],
         ),
@@ -167,12 +171,13 @@ class _DiamondContactFormState extends State<_DiamondContactForm> {
     final user = loginVM.currentUser;
 
     if (_isSent) {
+      final l10n = AppLocalizations.of(context)!;
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 40),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.check_circle_outline, color: Color(0xFF00A859), size: 80),
+            const Icon(Icons.check_circle_outline, color: AppColors.secondaryGreen, size: 80),
             const SizedBox(height: 20),
             const Text(
               'Demande envoyée !',
@@ -188,10 +193,10 @@ class _DiamondContactFormState extends State<_DiamondContactForm> {
             ElevatedButton(
               onPressed: () => Navigator.pop(context),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF00A859),
+                backgroundColor: AppColors.secondaryGreen,
                 minimumSize: const Size.fromHeight(50),
               ),
-              child: const Text('RETOUR'),
+              child: Text(l10n.cancel), // Utilisation de cancel pour "RETOUR"
             ),
           ],
         ),
@@ -249,7 +254,7 @@ class _DiamondContactFormState extends State<_DiamondContactForm> {
                   });
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.orange,
+                  backgroundColor: AppColors.accentOrange,
                   foregroundColor: Colors.white,
                   minimumSize: const Size.fromHeight(55),
                 ),
@@ -293,32 +298,33 @@ class _PaymentSimulationFormState extends State<_PaymentSimulationForm> {
   @override
   Widget build(BuildContext context) {
     final viewModel = Provider.of<SubscriptionViewModel>(context);
+    final l10n = AppLocalizations.of(context)!;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Finaliser l\'abonnement',
+          l10n.finalizeSubscription,
           style: Theme.of(context).textTheme.headlineSmall,
         ),
         const SizedBox(height: 10),
-        Text('Abonnement : ${widget.tier.displayName} - ${widget.tier.price}€/mois'),
+        Text('${l10n.tier} : ${widget.tier.displayName} - ${widget.tier.price}€/mois'),
         const Divider(height: 30),
         
         SwitchListTile(
-          title: const Text('Utiliser Stripe (Fenêtre native)'),
+          title: Text(l10n.useStripe),
           subtitle: const Text('Nécessite des clés API valides'),
           value: _useRealStripe,
           onChanged: (val) => setState(() => _useRealStripe = val),
         ),
 
         if (!_useRealStripe) ...[
-          const Text('Paiement par Carte Fictive (Mode Test)', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blueGrey)),
+          Text(l10n.dummyPayment, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blueGrey)),
           const SizedBox(height: 10),
           TextField(
             controller: _cardNumberController,
-            decoration: const InputDecoration(labelText: 'Numéro de carte', prefixIcon: Icon(Icons.credit_card)),
+            decoration: InputDecoration(labelText: l10n.cardNumber, prefixIcon: const Icon(Icons.credit_card)),
             keyboardType: TextInputType.number,
           ),
           Row(
@@ -326,14 +332,14 @@ class _PaymentSimulationFormState extends State<_PaymentSimulationForm> {
               Expanded(
                 child: TextField(
                   controller: _expiryController,
-                  decoration: const InputDecoration(labelText: 'Date d\'expiration', hintText: 'MM/YY'),
+                  decoration: InputDecoration(labelText: l10n.expiryDate, hintText: 'MM/YY'),
                 ),
               ),
               const SizedBox(width: 20),
               Expanded(
                 child: TextField(
                   controller: _cvcController,
-                  decoration: const InputDecoration(labelText: 'CVC'),
+                  decoration: InputDecoration(labelText: l10n.cvc),
                   keyboardType: TextInputType.number,
                 ),
               ),
@@ -360,11 +366,11 @@ class _PaymentSimulationFormState extends State<_PaymentSimulationForm> {
                       (route) => false,
                     );
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Félicitations ! Vous êtes maintenant ${widget.tier.displayName}')),
+                      SnackBar(content: Text(l10n.congratsSubscription(widget.tier.displayName))),
                     );
                   } else {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Le paiement a échoué ou a été annulé.')),
+                      SnackBar(content: Text(l10n.paymentFailed)),
                     );
                   }
                 },
@@ -373,7 +379,7 @@ class _PaymentSimulationFormState extends State<_PaymentSimulationForm> {
                   backgroundColor: _useRealStripe ? Colors.indigo : Colors.blue.shade800,
                   foregroundColor: Colors.white,
                 ),
-                child: Text(_useRealStripe ? 'OUVRIR STRIPE' : 'CONFIRMER LE PAIEMENT FICTIF'),
+                child: Text(_useRealStripe ? 'OUVRIR STRIPE' : l10n.confirmDummyPayment),
               ),
         const SizedBox(height: 20),
       ],

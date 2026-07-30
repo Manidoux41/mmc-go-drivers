@@ -1,5 +1,5 @@
 import 'package:mongo_dart/mongo_dart.dart';
-import '../config/secrets.dart';
+import 'package:flutter01/config/secrets.dart';
 
 class MongoService {
   static Db? _db;

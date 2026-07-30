@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import '../config/secrets.dart';
+import 'package:flutter01/config/secrets.dart';
 import 'package:flutter01/services/mongo_service.dart';
 
 class EmailService {

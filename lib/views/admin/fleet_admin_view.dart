@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter01/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
-import '../../viewmodels/login_viewmodel.dart';
-import '../../viewmodels/fleet_admin_viewmodel.dart';
-import '../../viewmodels/vehicle_viewmodel.dart';
-import '../../viewmodels/planning_viewmodel.dart';
-import '../../models/subscription_tier.dart';
-import '../../models/vehicle.dart';
-import '../../models/planning_activity.dart';
-import '../../models/user.dart';
-import '../../services/pdf_service.dart';
+import 'package:flutter01/viewmodels/login_viewmodel.dart';
+import 'package:flutter01/viewmodels/fleet_admin_viewmodel.dart';
+import 'package:flutter01/viewmodels/vehicle_viewmodel.dart';
+import 'package:flutter01/viewmodels/planning_viewmodel.dart';
+import 'package:flutter01/models/subscription_tier.dart';
+import 'package:flutter01/models/vehicle.dart';
+import 'package:flutter01/models/planning_activity.dart';
+import 'package:flutter01/models/user.dart';
+import 'package:flutter01/services/pdf_service.dart';
+import 'package:flutter01/config/colors.dart';
 import 'package:intl/intl.dart';
 
 class FleetAdminView extends StatelessWidget {
@@ -16,21 +18,22 @@ class FleetAdminView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return DefaultTabController(
       length: 3,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Console d\'Administration Entreprise'),
-          backgroundColor: Colors.blueGrey,
+          title: Text(l10n.fleetAdminConsole),
+          backgroundColor: AppColors.primaryBlue,
           foregroundColor: Colors.white,
-          bottom: const TabBar(
-            labelColor: Colors.white,
+          bottom: TabBar(
+            labelColor: AppColors.tertiaryYellow,
             unselectedLabelColor: Colors.white70,
-            indicatorColor: Colors.orange,
+            indicatorColor: AppColors.tertiaryYellow,
             tabs: [
-              Tab(icon: Icon(Icons.people_outline), text: 'Conducteurs'),
-              Tab(icon: Icon(Icons.directions_bus_filled_outlined), text: 'Véhicules'),
-              Tab(icon: Icon(Icons.calendar_view_week), text: 'Planning Flotte'),
+              Tab(icon: const Icon(Icons.people_outline), text: l10n.drivers),
+              Tab(icon: const Icon(Icons.directions_bus_filled_outlined), text: l10n.myVehicles),
+              Tab(icon: const Icon(Icons.calendar_view_week), text: l10n.fleetPlanning),
             ],
           ),
         ),
@@ -85,7 +88,7 @@ class _ManageDriversTabState extends State<_ManageDriversTab> {
           ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showAddDriverDialog(context),
-        backgroundColor: Colors.blueGrey,
+        backgroundColor: AppColors.primaryBlue,
         child: const Icon(Icons.person_add, color: Colors.white),
       ),
     );
@@ -210,7 +213,7 @@ class _ManageVehiclesTabState extends State<_ManageVehiclesTab> {
           ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showAddVehicleDialog(context),
-        backgroundColor: Colors.blueGrey,
+        backgroundColor: AppColors.primaryBlue,
         child: const Icon(Icons.add, color: Colors.white),
       ),
     );
@@ -280,7 +283,7 @@ class _PlanningOverviewRootState extends State<_PlanningOverviewRoot> {
     return Column(
       children: [
         Container(
-          color: Colors.blueGrey.shade50,
+          color: AppColors.primaryBlue.withValues(alpha: 0.05),
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
@@ -290,7 +293,7 @@ class _PlanningOverviewRootState extends State<_PlanningOverviewRoot> {
                 _buildSubTabButton(1, 'Vue Jour', Icons.view_day),
                 _buildSubTabButton(2, 'Vue Semaine', Icons.view_week),
                 IconButton(
-                  icon: const Icon(Icons.picture_as_pdf, color: Colors.blueGrey),
+                  icon: const Icon(Icons.picture_as_pdf, color: AppColors.primaryBlue),
                   onPressed: () {
                     final weekStart = _selectedDate.subtract(Duration(days: _selectedDate.weekday - 1));
                     Map<String, List<PlanningActivity>> data = {};
@@ -326,8 +329,8 @@ class _PlanningOverviewRootState extends State<_PlanningOverviewRoot> {
     final isSelected = _subTab == index;
     return TextButton.icon(
       onPressed: () => setState(() => _subTab = index),
-      icon: Icon(icon, size: 18, color: isSelected ? Colors.blueGrey : Colors.grey),
-      label: Text(label, style: TextStyle(color: isSelected ? Colors.blueGrey : Colors.grey, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
+      icon: Icon(icon, size: 18, color: isSelected ? AppColors.primaryBlue : Colors.grey),
+      label: Text(label, style: TextStyle(color: isSelected ? AppColors.primaryBlue : Colors.grey, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
     );
   }
 }
@@ -382,7 +385,7 @@ class _ManagePlanningTab extends StatelessWidget {
             );
           }
         },
-        backgroundColor: Colors.blueGrey,
+        backgroundColor: AppColors.primaryBlue,
         child: const Icon(Icons.add, color: Colors.white),
       ),
     );
@@ -402,7 +405,7 @@ class _DailyOverviewTable extends StatelessWidget {
       scrollDirection: Axis.horizontal,
       child: SingleChildScrollView(
         child: DataTable(
-          headingRowColor: WidgetStateProperty.all(Colors.blueGrey.shade100),
+          headingRowColor: WidgetStateProperty.all(AppColors.primaryBlue.withValues(alpha: 0.1)),
           border: TableBorder.all(color: Colors.grey.shade300),
           columns: [
             const DataColumn(label: Text('Conducteur', style: TextStyle(fontWeight: FontWeight.bold))),
@@ -455,7 +458,7 @@ class _WeeklyOverviewTable extends StatelessWidget {
       scrollDirection: Axis.horizontal,
       child: SingleChildScrollView(
         child: DataTable(
-          headingRowColor: WidgetStateProperty.all(Colors.blueGrey.shade100),
+          headingRowColor: WidgetStateProperty.all(AppColors.primaryBlue.withValues(alpha: 0.1)),
           border: TableBorder.all(color: Colors.grey.shade300),
           columnSpacing: 20,
           columns: [

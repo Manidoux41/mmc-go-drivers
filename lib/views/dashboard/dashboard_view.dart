@@ -1,21 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:flutter01/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
-import '../login/login_view.dart';
-import '../planning/planning_view.dart';
-import '../navigation/navigation_view.dart';
-import '../vehicle/vehicle_view.dart';
-import '../contact/contact_view.dart';
-import '../documents/document_view.dart';
-import '../subscription/paywall_view.dart';
-import '../admin/fleet_admin_view.dart';
-import '../admin/super_admin_view.dart';
-import '../../viewmodels/login_viewmodel.dart';
-import '../../viewmodels/subscription_viewmodel.dart';
-import '../../viewmodels/planning_viewmodel.dart';
-import '../../viewmodels/vehicle_viewmodel.dart';
-import '../../viewmodels/fleet_admin_viewmodel.dart';
-import '../../viewmodels/super_admin_viewmodel.dart';
-import '../../models/subscription_tier.dart';
+import 'package:flutter01/views/login/login_view.dart';
+import 'package:flutter01/views/planning/planning_view.dart';
+import 'package:flutter01/views/navigation/navigation_view.dart';
+import 'package:flutter01/views/vehicle/vehicle_view.dart';
+import 'package:flutter01/views/contact/contact_view.dart';
+import 'package:flutter01/views/documents/document_view.dart';
+import 'package:flutter01/views/subscription/paywall_view.dart';
+import 'package:flutter01/views/admin/fleet_admin_view.dart';
+import 'package:flutter01/views/admin/super_admin_view.dart';
+import 'package:flutter01/viewmodels/login_viewmodel.dart';
+import 'package:flutter01/viewmodels/subscription_viewmodel.dart';
+import 'package:flutter01/viewmodels/planning_viewmodel.dart';
+import 'package:flutter01/viewmodels/vehicle_viewmodel.dart';
+import 'package:flutter01/viewmodels/fleet_admin_viewmodel.dart';
+import 'package:flutter01/viewmodels/super_admin_viewmodel.dart';
+import 'package:flutter01/viewmodels/locale_viewmodel.dart';
+import 'package:flutter01/models/subscription_tier.dart';
 
 class DashboardView extends StatefulWidget {
   const DashboardView({super.key});
@@ -41,15 +43,24 @@ class _DashboardViewState extends State<DashboardView> {
     final tier = subVM.currentUser?.tier ?? user?.tier ?? SubscriptionTier.free;
 // ...
 
+    final l10n = AppLocalizations.of(context)!;
+
     return Scaffold(
       appBar: AppBar(
         leading: Padding(
           padding: const EdgeInsets.all(8.0),
           child: Image.asset('assets/icon/logoMMCGo.png'),
         ),
-        title: const Text('MMC Go - Tableau de bord'),
+        title: Text('MMC Go - ${l10n.dashboard}'),
         actions: [
           _buildTierBadge(context, tier),
+          IconButton(
+            icon: const Icon(Icons.language, color: Colors.white),
+            onPressed: () {
+              Provider.of<LocaleViewModel>(context, listen: false).clearLocale();
+            },
+            tooltip: l10n.changeLanguage,
+          ),
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: () async {
@@ -82,7 +93,7 @@ class _DashboardViewState extends State<DashboardView> {
         children: [
           _buildToolCard(
             context,
-            'Navigation',
+            l10n.navigation,
             Icons.map,
             Colors.purple,
             isLocked: false,
@@ -93,7 +104,7 @@ class _DashboardViewState extends State<DashboardView> {
           ),
           _buildToolCard(
             context,
-            'Planning',
+            l10n.planning,
             Icons.calendar_month,
             Colors.blue,
             isLocked: tier.index < SubscriptionTier.professional.index,
@@ -104,7 +115,7 @@ class _DashboardViewState extends State<DashboardView> {
           ),
           _buildToolCard(
             context,
-            'Véhicule',
+            l10n.vehicle,
             Icons.directions_bus,
             Theme.of(context).primaryColor,
             isLocked: tier.index < SubscriptionTier.professional.index,
@@ -115,7 +126,7 @@ class _DashboardViewState extends State<DashboardView> {
           ),
           _buildToolCard(
             context,
-            'Documents',
+            l10n.documents,
             Icons.description,
             Colors.orange,
             isLocked: tier.index < SubscriptionTier.professional.index,
@@ -126,7 +137,7 @@ class _DashboardViewState extends State<DashboardView> {
           ),
           _buildToolCard(
             context,
-            'Contact',
+            l10n.contact,
             Icons.contact_phone,
             Colors.red,
             isLocked: tier.index < SubscriptionTier.professional.index,
@@ -135,10 +146,20 @@ class _DashboardViewState extends State<DashboardView> {
               MaterialPageRoute(builder: (context) => ContactView()),
             ),
           ),
+          _buildToolCard(
+            context,
+            l10n.changeLanguage,
+            Icons.language,
+            Colors.teal,
+            isLocked: false,
+            onTap: () {
+              Provider.of<LocaleViewModel>(context, listen: false).clearLocale();
+            },
+          ),
           if (tier == SubscriptionTier.diamond)
             _buildToolCard(
               context,
-              'Administration',
+              l10n.administration,
               Icons.admin_panel_settings,
               Colors.blueGrey,
               isLocked: false,
@@ -150,7 +171,7 @@ class _DashboardViewState extends State<DashboardView> {
           if (user?.isSuperAdmin ?? false)
             _buildToolCard(
               context,
-              'Super Admin',
+              l10n.superAdmin,
               Icons.security,
               Colors.black87,
               isLocked: false,

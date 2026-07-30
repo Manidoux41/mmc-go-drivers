@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mongo_dart/mongo_dart.dart' show Db, DbCollection, where;
-import '../models/user.dart';
-import '../models/subscription_tier.dart';
+import 'package:flutter01/models/user.dart';
+import 'package:flutter01/models/subscription_tier.dart';
 import 'package:flutter01/services/mongo_service.dart';
 import 'package:flutter01/services/mongo_auth_service.dart';
 

@@ -1,25 +1,29 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter01/l10n/app_localizations.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter_compass/flutter_compass.dart';
 import 'package:intl/intl.dart';
-import '../../viewmodels/navigation_viewmodel.dart';
-import '../../viewmodels/vehicle_viewmodel.dart';
-import '../../models/planning_activity.dart' hide Waypoint;
-import '../../models/recorded_trip.dart';
-import '../../models/vehicle.dart';
-import '../../models/subscription_tier.dart';
-import '../../models/route_option.dart';
-import '../../viewmodels/login_viewmodel.dart';
-import '../../viewmodels/planning_viewmodel.dart';
-import '../../viewmodels/fleet_admin_viewmodel.dart';
-import '../../viewmodels/super_admin_viewmodel.dart';
-import '../login/login_view.dart';
-import '../dashboard/dashboard_view.dart';
-import '../subscription/paywall_view.dart';
-import '../about/about_view.dart';
+import 'package:flutter01/viewmodels/navigation_viewmodel.dart';
+import 'package:flutter01/viewmodels/vehicle_viewmodel.dart';
+import 'package:flutter01/viewmodels/login_viewmodel.dart';
+import 'package:flutter01/viewmodels/planning_viewmodel.dart';
+import 'package:flutter01/viewmodels/fleet_admin_viewmodel.dart';
+import 'package:flutter01/viewmodels/super_admin_viewmodel.dart';
+import 'package:flutter01/viewmodels/locale_viewmodel.dart';
+import 'package:flutter01/models/planning_activity.dart' hide Waypoint;
+import 'package:flutter01/models/recorded_trip.dart';
+import 'package:flutter01/models/vehicle.dart';
+import 'package:flutter01/models/subscription_tier.dart';
+import 'package:flutter01/models/route_option.dart';
+import 'package:flutter01/views/login/login_view.dart';
+import 'package:flutter01/views/dashboard/dashboard_view.dart';
+import 'package:flutter01/views/subscription/paywall_view.dart';
+import 'package:flutter01/views/about/about_view.dart';
+import 'package:flutter01/config/colors.dart';
 import 'dart:math' as math;
 
 class NavigationView extends StatefulWidget {
@@ -34,7 +38,14 @@ class NavigationView extends StatefulWidget {
 class _NavigationViewState extends State<NavigationView> {
   final MapController _mapController = MapController();
   final TextEditingController _nameController = TextEditingController();
+  StreamSubscription<CompassEvent>? _compassSubscription;
+  double _lastRotation = 0;
   
+  // Map Layers state
+  String _currentTileLayerUrl = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+  List<String> _currentSubdomains = ['a', 'b', 'c', 'd'];
+  bool _showLayerMenu = false;
+
   bool _showRoutePanel = false;
   bool _showStatsPanel = false;
   bool _showGraphs = false;
@@ -59,7 +70,28 @@ class _NavigationViewState extends State<NavigationView> {
           }
         }
       }
+
+      // Écouter la boussole pour orienter la carte
+      _compassSubscription = FlutterCompass.events!.listen((event) {
+        if (!mounted) return;
+        final navVM = Provider.of<NavigationViewModel>(context, listen: false);
+        
+        if ((navVM.isFollowing || navVM.isRecording) && event.heading != null) {
+          // Rotation de la carte selon le téléphone
+          // On évite les micro-mouvements (hystérésis)
+          if ((event.heading! - _lastRotation).abs() > 1) {
+            _lastRotation = event.heading!;
+            _mapController.rotate(-_lastRotation);
+          }
+        }
+      });
     });
+  }
+
+  @override
+  void dispose() {
+    _compassSubscription?.cancel();
+    super.dispose();
   }
 
   @override
@@ -67,21 +99,20 @@ class _NavigationViewState extends State<NavigationView> {
     final loginVM = Provider.of<LoginViewModel>(context);
     final user = loginVM.currentUser;
     final tier = user?.tier ?? SubscriptionTier.free;
+    final l10n = AppLocalizations.of(context)!;
 
-    // Écouter les changements de position pour le mode GPS "Course Up"
+    // Écouter les changements de position pour le mode GPS
     final navVM = Provider.of<NavigationViewModel>(context);
     if (navVM.isFollowing && navVM.currentPosition != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         // Centrer la carte sur la position
         _mapController.move(navVM.currentPosition!, _mapController.camera.zoom);
-        // Orienter la carte dans la direction du déplacement (Course Up)
-        _mapController.rotate(-navVM.currentHeading);
       });
     }
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.activity != null ? 'Itinéraire : ${widget.activity!.title}' : 'Navigation & Enregistrement'),
+        title: Text(widget.activity != null ? 'Itinéraire : ${widget.activity!.title}' : l10n.navAndRecording),
       ),
       drawer: Drawer(
         child: ListView(
@@ -109,12 +140,12 @@ class _NavigationViewState extends State<NavigationView> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      user != null ? 'Bonjour, ${user.username}' : 'Compte MMC Go',
+                      user != null ? l10n.helloUser(user.username) : l10n.mmcAccount,
                       style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
                       overflow: TextOverflow.ellipsis,
                     ),
                     Text(
-                      'Abonnement : ${tier.displayName}',
+                      '${l10n.tier} : ${tier.displayName}',
                       style: const TextStyle(color: Colors.white70, fontSize: 13),
                     ),
                   ],
@@ -124,7 +155,7 @@ class _NavigationViewState extends State<NavigationView> {
             if (user == null)
               ListTile(
                 leading: Icon(Icons.login, color: Theme.of(context).primaryColor),
-                title: const Text('Se connecter / S\'inscrire'),
+                title: Text('${l10n.login} / ${l10n.register}'),
                 onTap: () {
                   Navigator.pop(context);
                   Navigator.push(context, MaterialPageRoute(builder: (context) => const LoginView()));
@@ -133,7 +164,7 @@ class _NavigationViewState extends State<NavigationView> {
             else ...[
               ListTile(
                 leading: const Icon(Icons.dashboard, color: Colors.blue),
-                title: const Text('Tableau de bord (Outils)'),
+                title: Text('${l10n.dashboard} (${l10n.tools})'),
                 onTap: () {
                   Navigator.pop(context);
                   Navigator.push(context, MaterialPageRoute(builder: (context) => const DashboardView()));
@@ -141,10 +172,18 @@ class _NavigationViewState extends State<NavigationView> {
               ),
               ListTile(
                 leading: const Icon(Icons.star, color: Colors.orange),
-                title: const Text('Gérer mon abonnement'),
+                title: Text(l10n.manageSubscription),
                 onTap: () {
                   Navigator.pop(context);
                   Navigator.push(context, MaterialPageRoute(builder: (context) => const PaywallView()));
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.language, color: Colors.teal),
+                title: Text(l10n.changeLanguage),
+                onTap: () {
+                  Provider.of<LocaleViewModel>(context, listen: false).clearLocale();
+                  Navigator.pop(context); // Close drawer
                 },
               ),
               const Divider(),
@@ -173,7 +212,7 @@ class _NavigationViewState extends State<NavigationView> {
             ],
             ListTile(
               leading: const Icon(Icons.info_outline, color: Colors.grey),
-              title: const Text('À propos de MMC Go'),
+              title: Text(l10n.aboutMMC),
               onTap: () {
                 Navigator.pop(context);
                 Navigator.push(context, MaterialPageRoute(builder: (context) => const AboutView()));
@@ -243,9 +282,9 @@ class _NavigationViewState extends State<NavigationView> {
                 ),
                 children: [
                   TileLayer(
-                    urlTemplate: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-                    subdomains: const ['a', 'b', 'c', 'd'],
-                    userAgentPackageName: 'com.example.app',
+                    urlTemplate: _currentTileLayerUrl,
+                    subdomains: _currentSubdomains,
+                    userAgentPackageName: 'com.manidev41.mmcgodrivers',
                     retinaMode: RetinaMode.isHighDensity(context),
                   ),
                   PolylineLayer(
@@ -317,16 +356,16 @@ class _NavigationViewState extends State<NavigationView> {
               if (viewModel.isCalculating)
                 Container(
                   color: Colors.black26,
-                  child: const Center(
+                  child: Center(
                     child: Card(
                       child: Padding(
-                        padding: EdgeInsets.all(20.0),
+                        padding: const EdgeInsets.all(20.0),
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            CircularProgressIndicator(),
-                            SizedBox(height: 16),
-                            Text('Calcul de l\'itinéraire PL optimisé...'),
+                            const CircularProgressIndicator(),
+                            const SizedBox(height: 16),
+                            Text(l10n.calculatingRoute),
                           ],
                         ),
                       ),
@@ -336,9 +375,12 @@ class _NavigationViewState extends State<NavigationView> {
               if (_showRoutePanel)
                 _buildRoutePanel(context, viewModel, widget.activity?.vehicle),
               
+              if (_showLayerMenu)
+                _buildLayerMenu(context),
+
               // Dashboard Statistiques (Geo Tracker style)
               if (viewModel.isRecording || _showStatsPanel)
-                _buildStatsDashboard(viewModel),
+                _buildStatsDashboard(context, viewModel),
 
               // Affichage des contraintes véhicule
                   if (widget.activity?.vehicle != null)
@@ -352,9 +394,9 @@ class _NavigationViewState extends State<NavigationView> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('Véhicule: ${widget.activity!.vehicle!.registration}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                              Text(l10n.vehicleInfo(widget.activity!.vehicle!.registration), style: const TextStyle(fontWeight: FontWeight.bold)),
                               Text('Hauteur: ${widget.activity!.vehicle!.height}m | PTAC: ${widget.activity!.vehicle!.ptac}t', style: const TextStyle(fontSize: 12)),
-                              const Text('⚠️ Itinéraire optimisé Poids-Lourds', style: TextStyle(fontSize: 11, color: Colors.orange, fontWeight: FontWeight.bold)),
+                              Text(l10n.hgvOptimized, style: const TextStyle(fontSize: 11, color: Colors.orange, fontWeight: FontWeight.bold)),
                             ],
                           ),
                         ),
@@ -368,13 +410,41 @@ class _NavigationViewState extends State<NavigationView> {
                     child: _buildCompass(),
                   ),
 
-                  // Bouton Recentrer / Follow GPS
+                  // Bouton Recentrer / Follow GPS / Zoom
                   Positioned(
                     bottom: 110,
                     right: 20,
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
+                        // Zoom In
+                        FloatingActionButton.small(
+                          heroTag: 'btn_zoom_in',
+                          onPressed: () {
+                            _mapController.move(_mapController.camera.center, _mapController.camera.zoom + 1);
+                          },
+                          backgroundColor: Colors.white,
+                          child: const Icon(Icons.add, color: Colors.blueGrey),
+                        ),
+                        const SizedBox(height: 8),
+                        // Zoom Out
+                        FloatingActionButton.small(
+                          heroTag: 'btn_zoom_out',
+                          onPressed: () {
+                            _mapController.move(_mapController.camera.center, _mapController.camera.zoom - 1);
+                          },
+                          backgroundColor: Colors.white,
+                          child: const Icon(Icons.remove, color: Colors.blueGrey),
+                        ),
+                        const SizedBox(height: 12),
+                        // Choix Calque
+                        FloatingActionButton.small(
+                          heroTag: 'btn_layers',
+                          onPressed: () => setState(() => _showLayerMenu = !_showLayerMenu),
+                          backgroundColor: _showLayerMenu ? AppColors.tertiaryYellow : Colors.white,
+                          child: Icon(Icons.layers, color: _showLayerMenu ? Colors.black87 : Colors.grey),
+                        ),
+                        const SizedBox(height: 12),
                         // Cible GPS
                         FloatingActionButton.small(
                           heroTag: 'btn_follow',
@@ -385,9 +455,6 @@ class _NavigationViewState extends State<NavigationView> {
                             color: viewModel.isFollowing ? Colors.white : Colors.grey,
                           ),
                         ),
-                        const SizedBox(height: 12),
-                        // Boussole
-                        _buildCompass(),
                       ],
                     ),
                   ),
@@ -398,6 +465,13 @@ class _NavigationViewState extends State<NavigationView> {
                     bottom: 110,
                     child: Column(
                       children: [
+                        FloatingActionButton.small(
+                          heroTag: 'btn_lang',
+                          onPressed: () => Provider.of<LocaleViewModel>(context, listen: false).clearLocale(),
+                          backgroundColor: Colors.white,
+                          child: const Icon(Icons.language, color: Colors.teal),
+                        ),
+                        const SizedBox(height: 12),
                         FloatingActionButton.small(
                           heroTag: 'btn_stats_toggle',
                           onPressed: () => setState(() => _showStatsPanel = !_showStatsPanel),
@@ -476,6 +550,7 @@ class _NavigationViewState extends State<NavigationView> {
   }
 
   Widget _buildRoutePanel(BuildContext context, NavigationViewModel viewModel, Vehicle? activityVehicle) {
+    final l10n = AppLocalizations.of(context)!;
     // Utiliser le véhicule de l'activité, ou le premier de la flotte, ou un défaut
     final vehicleVM = Provider.of<VehicleViewModel>(context, listen: false);
     final vehicle = activityVehicle ?? (vehicleVM.vehicles.isNotEmpty ? vehicleVM.vehicles.first : Vehicle(
@@ -513,6 +588,7 @@ class _NavigationViewState extends State<NavigationView> {
                     shrinkWrap: true,
                     itemCount: _stopControllers.length,
                     itemBuilder: (context, index) {
+                      final l10n = AppLocalizations.of(context)!;
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 8.0),
                         child: Row(
@@ -524,7 +600,7 @@ class _NavigationViewState extends State<NavigationView> {
                               child: TextField(
                                 controller: _stopControllers[index],
                                 decoration: InputDecoration(
-                                  hintText: index == 0 ? 'Point de départ' : (index == _stopControllers.length - 1 ? 'Destination' : 'Étape'),
+                                  hintText: index == 0 ? l10n.startPoint : (index == _stopControllers.length - 1 ? l10n.destination : l10n.waypoint),
                                   isDense: true,
                                   border: const OutlineInputBorder(),
                                 ),
@@ -548,7 +624,7 @@ class _NavigationViewState extends State<NavigationView> {
                   TextButton.icon(
                     onPressed: () => setState(() => _stopControllers.insert(_stopControllers.length - 1, TextEditingController())),
                     icon: const Icon(Icons.add_circle_outline),
-                    label: const Text('Ajouter une étape'),
+                    label: Text(l10n.addStep),
                   ),
                   if (viewModel.plannedRoute.isNotEmpty)
                     IconButton(
@@ -560,7 +636,7 @@ class _NavigationViewState extends State<NavigationView> {
               ),
               const Divider(),
               if (viewModel.routeOptions.isNotEmpty) ...[
-                const Text('Choix de l\'itinéraire :', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                Text('${l10n.chooseRoute} :', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
                 const SizedBox(height: 8),
                 SizedBox(
                   height: 80,
@@ -622,7 +698,7 @@ class _NavigationViewState extends State<NavigationView> {
                             setState(() => _showRoutePanel = false);
                           },
                           icon: const Icon(Icons.navigation),
-                          label: const Text('DÉMARRER'),
+                          label: Text(l10n.startNav),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.green,
                             foregroundColor: Colors.white,
@@ -650,7 +726,7 @@ class _NavigationViewState extends State<NavigationView> {
                       ),
                       child: viewModel.isCalculating 
                         ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                        : const Text('CALCULER L\'ITINÉRAIRE'),
+                        : Text(l10n.calculateRoute),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -670,6 +746,79 @@ class _NavigationViewState extends State<NavigationView> {
                 ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLayerMenu(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return Positioned(
+      bottom: 240,
+      right: 20,
+      child: Card(
+        elevation: 10,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        child: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(l10n.mapLayers, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 10)),
+              const Divider(height: 10),
+              _buildLayerOption(
+                icon: Icons.map,
+                label: l10n.standardView,
+                url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+                subdomains: ['a', 'b', 'c', 'd'],
+              ),
+              _buildLayerOption(
+                icon: Icons.satellite_alt,
+                label: l10n.satelliteView,
+                url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+                subdomains: [],
+              ),
+              _buildLayerOption(
+                icon: Icons.terrain,
+                label: l10n.terrainView,
+                url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+                subdomains: ['a', 'b', 'c'],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLayerOption({
+    required IconData icon,
+    required String label,
+    required String url,
+    required List<String> subdomains,
+  }) {
+    final isSelected = _currentTileLayerUrl == url;
+    return InkWell(
+      onTap: () {
+        setState(() {
+          _currentTileLayerUrl = url;
+          _currentSubdomains = subdomains;
+          _showLayerMenu = false;
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        width: 130,
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.primaryBlue.withValues(alpha: 0.1) : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 18, color: isSelected ? AppColors.primaryBlue : Colors.grey),
+            const SizedBox(width: 8),
+            Text(label, style: TextStyle(fontSize: 12, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
+          ],
         ),
       ),
     );
@@ -711,16 +860,17 @@ class _NavigationViewState extends State<NavigationView> {
   }
 
   void _showStopDialog(BuildContext context, NavigationViewModel viewModel) {
+    final l10n = AppLocalizations.of(context)!;
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Enregistrer le trajet'),
+        title: Text(l10n.saveTrip),
         content: TextField(
           controller: _nameController,
-          decoration: const InputDecoration(labelText: 'Nom du trajet'),
+          decoration: InputDecoration(labelText: l10n.tripName),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Annuler')),
+          TextButton(onPressed: () => Navigator.pop(context), child: Text(l10n.cancel)),
           TextButton(
             onPressed: () async {
               final user = Provider.of<LoginViewModel>(context, listen: false).currentUser;
@@ -728,7 +878,7 @@ class _NavigationViewState extends State<NavigationView> {
               _nameController.clear();
               if (context.mounted) Navigator.pop(context);
             },
-            child: const Text('Enregistrer'),
+            child: Text(l10n.confirm),
           ),
         ],
       ),
@@ -736,6 +886,7 @@ class _NavigationViewState extends State<NavigationView> {
   }
 
   void _showSavedTrips(BuildContext context, NavigationViewModel viewModel) {
+    final l10n = AppLocalizations.of(context)!;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -744,12 +895,13 @@ class _NavigationViewState extends State<NavigationView> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            const Text('Historique des trajets', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            Text(l10n.tripHistory, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
             const Divider(),
             Expanded(
               child: ListView.builder(
                 itemCount: viewModel.savedTrips.length,
                 itemBuilder: (context, index) {
+                  final l10n = AppLocalizations.of(context)!;
                   final trip = viewModel.savedTrips[index];
                   return Card(
                     child: ListTile(
@@ -765,6 +917,20 @@ class _NavigationViewState extends State<NavigationView> {
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
+                          IconButton(
+                            icon: const Icon(Icons.auto_fix_high, color: Colors.purple),
+                            tooltip: 'Optimiser le tracé (Suivre les routes)',
+                            onPressed: () {
+                              final vehicleVM = Provider.of<VehicleViewModel>(context, listen: false);
+                              final v = widget.activity?.vehicle ?? (vehicleVM.vehicles.isNotEmpty ? vehicleVM.vehicles.first : null);
+                              if (v != null) {
+                                viewModel.optimizeRecordedTrip(trip, v);
+                                Navigator.pop(context);
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Aucun profil véhicule disponible pour l\'optimisation.')));
+                              }
+                            },
+                          ),
                           IconButton(icon: const Icon(Icons.share, color: Colors.blue), onPressed: () => viewModel.shareTrip(trip)),
                           IconButton(icon: const Icon(Icons.play_circle_fill, color: Colors.green, size: 30), onPressed: () {
                             viewModel.loadTrip(trip);
@@ -814,7 +980,7 @@ class _NavigationViewState extends State<NavigationView> {
 
         return GestureDetector(
           onTap: () {
-            // Optionnel : Recentrer la carte au Nord ?
+            // Recentrer la carte au Nord magnétique
             _mapController.rotate(0);
           },
           child: Container(
@@ -824,9 +990,24 @@ class _NavigationViewState extends State<NavigationView> {
               shape: BoxShape.circle,
               boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4)],
             ),
-            child: Transform.rotate(
-              angle: (direction * (math.pi / 180) * -1),
-              child: const Icon(Icons.navigation, color: Colors.red, size: 30),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Transform.rotate(
+                  angle: (direction * (math.pi / 180) * -1),
+                  child: Image.asset('assets/icon/logoMMCGo.png', width: 30, height: 30, opacity: const AlwaysStoppedAnimation(0.3)),
+                ),
+                Transform.rotate(
+                  angle: (direction * (math.pi / 180) * -1),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text('N', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 12)),
+                      Container(width: 2, height: 15, color: Colors.red),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
         );
@@ -834,7 +1015,8 @@ class _NavigationViewState extends State<NavigationView> {
     );
   }
 
-  Widget _buildStatsDashboard(NavigationViewModel vm) {
+  Widget _buildStatsDashboard(BuildContext context, NavigationViewModel vm) {
+    final l10n = AppLocalizations.of(context)!;
     return Positioned(
       top: 80,
       left: 10,
@@ -854,9 +1036,9 @@ class _NavigationViewState extends State<NavigationView> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceAround,
                         children: [
-                          _buildStatItem('VITESSE', '${vm.currentSpeed.toStringAsFixed(1)}', 'km/h', icon: Icons.speed, color: Colors.greenAccent),
-                          _buildStatItem('DISTANCE', '${vm.totalDistance.toStringAsFixed(2)}', 'km', icon: Icons.straighten),
-                          _buildStatItem('ALTITUDE', '${vm.altitude.toInt()}', 'm', icon: Icons.terrain, color: Colors.blueAccent),
+                          _buildStatItem(l10n.speed, '${vm.currentSpeed.toStringAsFixed(1)}', 'km/h', icon: Icons.speed, color: Colors.greenAccent),
+                          _buildStatItem(l10n.distance, '${vm.totalDistance.toStringAsFixed(2)}', 'km', icon: Icons.straighten),
+                          _buildStatItem(l10n.altitude, '${vm.altitude.toInt()}', 'm', icon: Icons.terrain, color: Colors.blueAccent),
                         ],
                       ),
                     ),

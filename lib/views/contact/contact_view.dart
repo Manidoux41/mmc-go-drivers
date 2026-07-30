@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter01/l10n/app_localizations.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../../models/contact.dart';
+import 'package:flutter01/models/contact.dart';
 
 class ContactView extends StatelessWidget {
   ContactView({super.key});
@@ -57,9 +58,10 @@ class ContactView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Contacts Utiles'),
+        title: Text(l10n.usefulContacts),
         backgroundColor: Theme.of(context).primaryColor,
         foregroundColor: Colors.white,
       ),

@@ -15,7 +15,7 @@ if (keystorePropertiesFile.exists()) {
 
 android {
     namespace = "com.manidev41.mmcgodrivers"
-    compileSdk = 36 // Mis à jour selon les recommandations des plugins
+    compileSdk = 36 // Android 16
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -39,7 +39,7 @@ android {
     defaultConfig {
         applicationId = "com.manidev41.mmcgodrivers"
         minSdk = flutter.minSdkVersion
-        targetSdk = 35 // On garde 35 (Android 15) pour le comportement d'exécution
+        targetSdk = 36 // Android 16
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }

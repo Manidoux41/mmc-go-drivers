@@ -1,4 +1,4 @@
-import 'subscription_tier.dart';
+import 'package:flutter01/models/subscription_tier.dart';
 
 class User {
   final String id; // ID MongoDB (hex string)

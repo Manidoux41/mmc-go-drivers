@@ -46,3 +46,28 @@ app.*.map.json
 
 # Secrets configuration
 lib/config/secrets.dart
+
+# Flutter
+build/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+
+# Android
+android/.gradle/
+android/app/build/
+
+# Gradle
+.gradle/
+.gradle_home/
+
+# macOS
+.DS_Store
+
+# IntelliJ / VSCode
+.idea/
+.vscode/
+
+# Logs
+*.log

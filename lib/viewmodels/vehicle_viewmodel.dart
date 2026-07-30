@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mongo_dart/mongo_dart.dart' show Db, DbCollection, where;
-import '../models/vehicle.dart';
+import 'package:flutter01/models/vehicle.dart';
 import 'package:flutter01/services/mongo_service.dart';
 
 class VehicleViewModel extends ChangeNotifier {

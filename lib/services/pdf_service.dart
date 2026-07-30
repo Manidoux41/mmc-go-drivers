@@ -5,7 +5,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:path_provider/path_provider.dart';
 import 'package:printing/printing.dart';
-import '../models/planning_activity.dart';
+import 'package:flutter01/models/planning_activity.dart';
 
 class PdfService {
   static Future<File?> imageToPdf(File imageFile) async {

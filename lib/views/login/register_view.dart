@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter01/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
-import '../../viewmodels/login_viewmodel.dart';
-import '../../viewmodels/subscription_viewmodel.dart';
-import '../../viewmodels/planning_viewmodel.dart';
-import '../../viewmodels/vehicle_viewmodel.dart';
-import '../subscription/paywall_view.dart';
+import 'package:flutter01/viewmodels/login_viewmodel.dart';
+import 'package:flutter01/viewmodels/subscription_viewmodel.dart';
+import 'package:flutter01/viewmodels/planning_viewmodel.dart';
+import 'package:flutter01/viewmodels/vehicle_viewmodel.dart';
+import 'package:flutter01/views/subscription/paywall_view.dart';
 
 class RegisterView extends StatefulWidget {
   const RegisterView({super.key});
@@ -22,10 +23,11 @@ class _RegisterViewState extends State<RegisterView> {
   @override
   Widget build(BuildContext context) {
     final viewModel = Provider.of<LoginViewModel>(context);
+    final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Créer un compte'),
+        title: Text(l10n.createAccount),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(30.0),
@@ -33,15 +35,15 @@ class _RegisterViewState extends State<RegisterView> {
           children: [
             Image.asset('assets/icon/logoMMCGo.png', height: 100),
             const SizedBox(height: 20),
-            const Text(
-              'Rejoignez MMC Go Drivers',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            Text(
+              l10n.joinMMC,
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 30),
             TextField(
               controller: _fullNameController,
               decoration: InputDecoration(
-                labelText: 'Nom complet',
+                labelText: l10n.fullName,
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 prefixIcon: Icon(Icons.badge, color: Theme.of(context).primaryColor),
               ),
@@ -50,7 +52,7 @@ class _RegisterViewState extends State<RegisterView> {
             TextField(
               controller: _emailController,
               decoration: InputDecoration(
-                labelText: 'Identifiant / Email',
+                labelText: '${l10n.username} / ${l10n.email}',
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 prefixIcon: Icon(Icons.email, color: Theme.of(context).primaryColor),
               ),
@@ -60,7 +62,7 @@ class _RegisterViewState extends State<RegisterView> {
               controller: _passwordController,
               obscureText: true,
               decoration: InputDecoration(
-                labelText: 'Mot de passe',
+                labelText: l10n.password,
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 prefixIcon: Icon(Icons.lock, color: Theme.of(context).primaryColor),
               ),
@@ -70,7 +72,7 @@ class _RegisterViewState extends State<RegisterView> {
               controller: _confirmPasswordController,
               obscureText: true,
               decoration: InputDecoration(
-                labelText: 'Confirmer le mot de passe',
+                labelText: l10n.confirmPassword,
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 prefixIcon: Icon(Icons.lock_clock, color: Theme.of(context).primaryColor),
               ),
@@ -82,7 +84,7 @@ class _RegisterViewState extends State<RegisterView> {
                     onPressed: () async {
                       if (_passwordController.text != _confirmPasswordController.text) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Les mots de passe ne correspondent pas')),
+                          SnackBar(content: Text(l10n.passwordsDoNotMatch)),
                         );
                         return;
                       }
@@ -126,7 +128,7 @@ class _RegisterViewState extends State<RegisterView> {
                       minimumSize: const Size.fromHeight(55),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
-                    child: const Text('S\'INSCRIRE ET CHOISIR UN FORFAIT'),
+                    child: Text(l10n.registerAndChoosePlan),
                   ),
           ],
         ),

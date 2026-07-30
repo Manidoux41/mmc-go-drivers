@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../services/settings_service.dart';
+import 'package:flutter01/services/settings_service.dart';
 
 class AdminSettingsView extends StatefulWidget {
   const AdminSettingsView({super.key});

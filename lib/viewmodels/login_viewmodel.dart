@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:mongo_dart/mongo_dart.dart' show where;
 import 'package:provider/provider.dart';
-import '../models/user.dart';
+import 'package:flutter01/models/user.dart';
 import 'package:flutter01/services/mongo_service.dart';
 import 'package:flutter01/services/mongo_auth_service.dart';
-import 'planning_viewmodel.dart';
-import 'vehicle_viewmodel.dart';
-import 'fleet_admin_viewmodel.dart';
+import 'package:flutter01/viewmodels/planning_viewmodel.dart';
+import 'package:flutter01/viewmodels/vehicle_viewmodel.dart';
+import 'package:flutter01/viewmodels/fleet_admin_viewmodel.dart';
 
 class LoginViewModel extends ChangeNotifier {
   final TextEditingController usernameController = TextEditingController();

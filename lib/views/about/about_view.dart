@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../models/subscription_tier.dart';
+import 'package:flutter01/models/subscription_tier.dart';
 
 class AboutView extends StatelessWidget {
   const AboutView({super.key});

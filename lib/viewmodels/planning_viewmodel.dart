@@ -7,11 +7,11 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:mongo_dart/mongo_dart.dart' show Db, DbCollection, where;
-import '../models/planning_activity.dart';
-import '../models/vehicle.dart';
+import 'package:flutter01/models/planning_activity.dart';
+import 'package:flutter01/models/vehicle.dart';
 import 'package:flutter01/services/mongo_service.dart';
 import 'package:flutter01/services/pdf_service.dart';
-import 'vehicle_viewmodel.dart';
+import 'package:flutter01/viewmodels/vehicle_viewmodel.dart';
 
 enum PlanningViewMode { day, week, month }
 

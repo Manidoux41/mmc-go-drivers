@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:http/http.dart' as http;
 
-import '../config/secrets.dart';
+import 'package:flutter01/config/secrets.dart';
 
 class StripeService {
   static const String _publishableKey = AppSecrets.stripePublishableKey;

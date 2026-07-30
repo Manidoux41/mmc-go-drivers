@@ -1,20 +1,22 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter01/l10n/app_localizations.dart';
 import 'package:universal_io/io.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
-import '../../viewmodels/document_viewmodel.dart';
-import '../../models/driver_document.dart';
+import 'package:flutter01/viewmodels/document_viewmodel.dart';
+import 'package:flutter01/models/driver_document.dart';
 
 class DocumentView extends StatelessWidget {
   const DocumentView({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Mes Documents'),
+        title: Text(l10n.myDocuments),
         backgroundColor: Theme.of(context).primaryColor,
         foregroundColor: Colors.white,
       ),
@@ -34,6 +36,7 @@ class DocumentView extends StatelessWidget {
   }
 
   Widget _buildDocumentCard(BuildContext context, DocumentViewModel viewModel, DriverDocument doc) {
+    final l10n = AppLocalizations.of(context)!;
     final bool hasFile = doc.filePath != null;
     final bool isExpired = doc.isExpired;
 
@@ -55,10 +58,10 @@ class DocumentView extends StatelessWidget {
         ),
         subtitle: Text(
           isExpired 
-            ? 'EXPIRÉ' 
+            ? l10n.expired 
             : (doc.expiryDate != null 
-                ? 'Expire le : ${DateFormat('dd/MM/yyyy').format(doc.expiryDate!)}' 
-                : 'Date de validité non saisie'),
+                ? l10n.expiresOn(DateFormat('dd/MM/yyyy', Localizations.localeOf(context).toString()).format(doc.expiryDate!))
+                : l10n.noExpiryDate),
           style: TextStyle(
             color: isExpired ? Colors.red : Colors.grey,
             fontWeight: isExpired ? FontWeight.bold : FontWeight.normal,
@@ -90,11 +93,11 @@ class DocumentView extends StatelessWidget {
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(color: Colors.grey.shade300, style: BorderStyle.solid),
                     ),
-                    child: const Column(
+                    child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.upload_file, color: Colors.grey),
-                        Text('Aucun document chargé', style: TextStyle(color: Colors.grey)),
+                        const Icon(Icons.upload_file, color: Colors.grey),
+                        Text(l10n.noDocumentLoaded, style: const TextStyle(color: Colors.grey)),
                       ],
                     ),
                   ),
@@ -105,12 +108,12 @@ class DocumentView extends StatelessWidget {
                     ElevatedButton.icon(
                       onPressed: () => _showPickerOptions(context, viewModel, doc),
                       icon: const Icon(Icons.add_a_photo),
-                      label: Text(hasFile ? 'Remplacer' : 'Ajouter'),
+                      label: Text(hasFile ? l10n.replace : l10n.add),
                     ),
                     OutlinedButton.icon(
                       onPressed: () => _selectExpiryDate(context, viewModel, doc),
                       icon: const Icon(Icons.calendar_today),
-                      label: const Text('Validité'),
+                      label: Text(l10n.validity),
                     ),
                   ],
                 ),
@@ -133,6 +136,7 @@ class DocumentView extends StatelessWidget {
   }
 
   void _showPickerOptions(BuildContext context, DocumentViewModel viewModel, DriverDocument doc) {
+    final l10n = AppLocalizations.of(context)!;
     showModalBottomSheet(
       context: context,
       builder: (context) => SafeArea(
@@ -140,7 +144,7 @@ class DocumentView extends StatelessWidget {
           children: [
             ListTile(
               leading: const Icon(Icons.camera_alt),
-              title: const Text('Prendre une photo'),
+              title: Text(l10n.takePhoto),
               onTap: () {
                 viewModel.pickDocument(doc.id, ImageSource.camera);
                 Navigator.pop(context);
@@ -148,7 +152,7 @@ class DocumentView extends StatelessWidget {
             ),
             ListTile(
               leading: const Icon(Icons.photo_library),
-              title: const Text('Choisir dans la galerie'),
+              title: Text(l10n.chooseFromGallery),
               onTap: () {
                 viewModel.pickDocument(doc.id, ImageSource.gallery);
                 Navigator.pop(context);
@@ -161,12 +165,13 @@ class DocumentView extends StatelessWidget {
   }
 
   Future<void> _selectExpiryDate(BuildContext context, DocumentViewModel viewModel, DriverDocument doc) async {
+    final l10n = AppLocalizations.of(context)!;
     final DateTime? picked = await showDatePicker(
       context: context,
       initialDate: doc.expiryDate ?? DateTime.now().add(const Duration(days: 365)),
       firstDate: DateTime.now().subtract(const Duration(days: 365 * 5)),
       lastDate: DateTime.now().add(const Duration(days: 365 * 15)),
-      locale: const Locale('fr', 'FR'),
+      locale: Localizations.localeOf(context),
     );
     if (picked != null) {
       viewModel.updateExpiryDate(doc.id, picked);

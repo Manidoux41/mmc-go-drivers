@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import '../models/driver_document.dart';
+import 'package:flutter01/models/driver_document.dart';
 
 class DocumentViewModel extends ChangeNotifier {
   final ImagePicker _picker = ImagePicker();

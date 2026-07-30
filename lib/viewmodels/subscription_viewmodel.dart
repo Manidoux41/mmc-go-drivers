@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:mongo_dart/mongo_dart.dart' show where;
-import '../models/subscription_tier.dart';
-import '../models/user.dart';
+import 'package:flutter01/models/subscription_tier.dart';
+import 'package:flutter01/models/user.dart';
 import 'package:flutter01/services/mongo_service.dart';
-import '../services/stripe_service.dart';
+import 'package:flutter01/services/stripe_service.dart';
 
 class SubscriptionViewModel extends ChangeNotifier {
   User? _currentUser;

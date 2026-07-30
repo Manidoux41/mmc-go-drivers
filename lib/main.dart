@@ -1,18 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter01/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/date_symbol_data_local.dart';
-import 'viewmodels/login_viewmodel.dart';
-import 'viewmodels/planning_viewmodel.dart';
-import 'viewmodels/navigation_viewmodel.dart';
-import 'viewmodels/vehicle_viewmodel.dart';
-import 'viewmodels/document_viewmodel.dart';
-import 'viewmodels/subscription_viewmodel.dart';
-import 'viewmodels/fleet_admin_viewmodel.dart';
-import 'viewmodels/super_admin_viewmodel.dart';
-import 'services/stripe_service.dart';
+import 'package:flutter01/viewmodels/login_viewmodel.dart';
+import 'package:flutter01/viewmodels/planning_viewmodel.dart';
+import 'package:flutter01/viewmodels/navigation_viewmodel.dart';
+import 'package:flutter01/viewmodels/vehicle_viewmodel.dart';
+import 'package:flutter01/viewmodels/document_viewmodel.dart';
+import 'package:flutter01/viewmodels/subscription_viewmodel.dart';
+import 'package:flutter01/viewmodels/fleet_admin_viewmodel.dart';
+import 'package:flutter01/viewmodels/super_admin_viewmodel.dart';
+import 'package:flutter01/viewmodels/locale_viewmodel.dart';
+import 'package:flutter01/services/stripe_service.dart';
 import 'package:flutter01/services/mongo_service.dart';
-import 'views/navigation/navigation_view.dart';
+import 'package:flutter01/views/navigation/navigation_view.dart';
+import 'package:flutter01/views/language/language_selection_view.dart';
+import 'package:flutter01/config/colors.dart';
 
 void main() async {
   try {
@@ -27,6 +31,7 @@ void main() async {
     runApp(
       MultiProvider(
         providers: [
+          ChangeNotifierProvider(create: (_) => LocaleViewModel()),
           ChangeNotifierProvider(create: (_) => LoginViewModel()),
           ChangeNotifierProvider(create: (_) => VehicleViewModel()),
           ChangeNotifierProxyProvider<VehicleViewModel, PlanningViewModel>(
@@ -80,33 +85,35 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final localeVM = Provider.of<LocaleViewModel>(context);
+
     return MaterialApp(
       title: 'MMC Go Drivers',
       debugShowCheckedModeBanner: false,
-      locale: const Locale('fr', 'FR'),
-      supportedLocales: const [
-        Locale('fr', 'FR'),
-      ],
-      localizationsDelegates: const [
+      locale: localeVM.locale,
+      supportedLocales: AppLocalizations.supportedLocales,
+      localizationsDelegates: [
+        AppLocalizations.delegate,
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
       theme: ThemeData(
         useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF00A859),
-          primary: const Color(0xFF00A859),
-          secondary: const Color(0xFF1B5E20),
-          tertiary: const Color(0xFFFFD600),
-        ),
+        colorScheme: AppColors.colorScheme,
         appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFF00A859),
+          backgroundColor: AppColors.primaryBlue,
           foregroundColor: Colors.white,
           elevation: 0,
         ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.primaryBlue,
+            foregroundColor: Colors.white,
+          ),
+        ),
       ),
-      home: const NavigationView(),
+      home: localeVM.locale == null ? const LanguageSelectionView() : const NavigationView(),
     );
   }
 }

@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter01/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
-import '../../viewmodels/vehicle_viewmodel.dart';
-import '../../viewmodels/login_viewmodel.dart';
-import '../../models/vehicle.dart';
-import '../../models/subscription_tier.dart';
+import 'package:flutter01/viewmodels/vehicle_viewmodel.dart';
+import 'package:flutter01/viewmodels/login_viewmodel.dart';
+import 'package:flutter01/models/vehicle.dart';
+import 'package:flutter01/models/subscription_tier.dart';
 
 class VehicleView extends StatefulWidget {
   const VehicleView({super.key});
@@ -26,10 +27,11 @@ class _VehicleViewState extends State<VehicleView> {
   Widget build(BuildContext context) {
     final user = Provider.of<LoginViewModel>(context).currentUser;
     final tier = user?.tier ?? SubscriptionTier.free;
+    final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Ma Flotte d\'Autocars'),
+        title: Text(l10n.myFleet),
         backgroundColor: Theme.of(context).primaryColor,
         foregroundColor: Colors.white,
       ),
@@ -58,6 +60,7 @@ class _VehicleViewState extends State<VehicleView> {
   }
 
   Widget _buildVehicleCard(BuildContext context, VehicleViewModel viewModel, Vehicle vehicle, String? userId) {
+    final l10n = AppLocalizations.of(context)!;
     return Card(
       elevation: 3,
       margin: const EdgeInsets.only(bottom: 16),
@@ -70,7 +73,7 @@ class _VehicleViewState extends State<VehicleView> {
               child: const Icon(Icons.directions_bus, color: Colors.white),
             ),
             title: Text('${vehicle.brand} ${vehicle.model}', style: const TextStyle(fontWeight: FontWeight.bold)),
-            subtitle: Text('${vehicle.registration} ${vehicle.parkNumber != null ? "• Parc: ${vehicle.parkNumber}" : ""}', 
+            subtitle: Text('${vehicle.registration} ${vehicle.parkNumber != null ? "• ${l10n.parkNumber}: ${vehicle.parkNumber}" : ""}', 
                 style: TextStyle(color: Theme.of(context).primaryColor, fontWeight: FontWeight.w600)),
             trailing: PopupMenuButton<String>(
               onSelected: (val) {
@@ -92,10 +95,10 @@ class _VehicleViewState extends State<VehicleView> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _buildSpecItem(Icons.height, 'Hauteur', '${vehicle.height}m'),
-                _buildSpecItem(Icons.straighten, 'Longueur', '${vehicle.length}m'),
-                _buildSpecItem(Icons.aspect_ratio, 'Largeur', '${vehicle.width}m'),
-                _buildSpecItem(Icons.monitor_weight_outlined, 'PTAC', '${vehicle.ptac}t'),
+                _buildSpecItem(Icons.height, l10n.height, '${vehicle.height}m'),
+                _buildSpecItem(Icons.straighten, l10n.length, '${vehicle.length}m'),
+                _buildSpecItem(Icons.aspect_ratio, l10n.width, '${vehicle.width}m'),
+                _buildSpecItem(Icons.monitor_weight_outlined, l10n.ptac, '${vehicle.ptac}t'),
               ],
             ),
           ),
@@ -107,7 +110,7 @@ class _VehicleViewState extends State<VehicleView> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Énergie: ${vehicle.fuelLabel}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                    Text('${l10n.energy}: ${vehicle.fuelLabel}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                     Text('${vehicle.mileage.toInt()} km', style: const TextStyle(fontSize: 14, color: Colors.grey)),
                   ],
                 ),
@@ -136,6 +139,7 @@ class _VehicleViewState extends State<VehicleView> {
   }
 
   void _showAddVehicleDialog(BuildContext context, String? userId, {Vehicle? vehicle}) {
+    final l10n = AppLocalizations.of(context)!;
     final isEdit = vehicle != null;
     final registrationController = TextEditingController(text: vehicle?.registration);
     final brandController = TextEditingController(text: vehicle?.brand);
@@ -153,51 +157,51 @@ class _VehicleViewState extends State<VehicleView> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: Text(isEdit ? 'Modifier le véhicule' : 'Ajouter un véhicule'),
+          title: Text(isEdit ? l10n.editVehicle : l10n.addVehicle),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(controller: registrationController, decoration: const InputDecoration(labelText: 'Immatriculation *')),
-                TextField(controller: parkController, decoration: const InputDecoration(labelText: 'Numéro de Parc')),
+                TextField(controller: registrationController, decoration: InputDecoration(labelText: l10n.registrationRequired)),
+                TextField(controller: parkController, decoration: InputDecoration(labelText: l10n.parkNumber)),
                 Row(
                   children: [
-                    Expanded(child: TextField(controller: brandController, decoration: const InputDecoration(labelText: 'Marque'))),
+                    Expanded(child: TextField(controller: brandController, decoration: InputDecoration(labelText: l10n.brand))),
                     const SizedBox(width: 10),
-                    Expanded(child: TextField(controller: modelController, decoration: const InputDecoration(labelText: 'Modèle'))),
+                    Expanded(child: TextField(controller: modelController, decoration: InputDecoration(labelText: l10n.model))),
                   ],
                 ),
                 DropdownButtonFormField<FuelType>(
                   value: selectedFuel,
-                  decoration: const InputDecoration(labelText: 'Énergie'),
+                  decoration: InputDecoration(labelText: l10n.energy),
                   items: FuelType.values.map((f) => DropdownMenuItem(value: f, child: Text(f.name.toUpperCase()))).toList(),
                   onChanged: (val) => setDialogState(() => selectedFuel = val!),
                 ),
                 Row(
                   children: [
-                    Expanded(child: TextField(controller: heightController, decoration: const InputDecoration(labelText: 'Hauteur (m)'), keyboardType: TextInputType.number)),
+                    Expanded(child: TextField(controller: heightController, decoration: InputDecoration(labelText: '${l10n.height} (m)'), keyboardType: TextInputType.number)),
                     const SizedBox(width: 10),
-                    Expanded(child: TextField(controller: widthController, decoration: const InputDecoration(labelText: 'Largeur (m)'), keyboardType: TextInputType.number)),
+                    Expanded(child: TextField(controller: widthController, decoration: InputDecoration(labelText: '${l10n.width} (m)'), keyboardType: TextInputType.number)),
                   ],
                 ),
                 Row(
                   children: [
-                    Expanded(child: TextField(controller: lengthController, decoration: const InputDecoration(labelText: 'Longueur (m)'), keyboardType: TextInputType.number)),
+                    Expanded(child: TextField(controller: lengthController, decoration: InputDecoration(labelText: '${l10n.length} (m)'), keyboardType: TextInputType.number)),
                     const SizedBox(width: 10),
-                    Expanded(child: TextField(controller: ptacController, decoration: const InputDecoration(labelText: 'PTAC (t)'), keyboardType: TextInputType.number)),
+                    Expanded(child: TextField(controller: ptacController, decoration: InputDecoration(labelText: '${l10n.ptac} (t)'), keyboardType: TextInputType.number)),
                   ],
                 ),
-                TextField(controller: mileageController, decoration: const InputDecoration(labelText: 'Kilométrage initial'), keyboardType: TextInputType.number),
+                TextField(controller: mileageController, decoration: InputDecoration(labelText: l10n.initialMileage), keyboardType: TextInputType.number),
               ],
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Annuler')),
+            TextButton(onPressed: () => Navigator.pop(context), child: Text(l10n.cancel)),
             ElevatedButton(
               onPressed: () async {
                 if (registrationController.text.trim().isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('L\'immatriculation est obligatoire'), backgroundColor: Colors.orange),
+                    SnackBar(content: Text(l10n.registrationRequired), backgroundColor: Colors.orange),
                   );
                   return;
                 }
@@ -231,7 +235,7 @@ class _VehicleViewState extends State<VehicleView> {
                   if (success) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text(isEdit ? 'Véhicule modifié' : 'Véhicule enregistré'),
+                        content: Text(isEdit ? l10n.vehicleModified : l10n.vehicleSaved),
                         backgroundColor: Colors.green,
                       ),
                     );
@@ -243,7 +247,7 @@ class _VehicleViewState extends State<VehicleView> {
                   }
                 }
               },
-              child: const Text('ENREGISTRER'),
+              child: Text(l10n.save),
             ),
           ],
         ),
@@ -252,20 +256,21 @@ class _VehicleViewState extends State<VehicleView> {
   }
 
   void _confirmDelete(BuildContext context, VehicleViewModel viewModel, Vehicle vehicle, String? userId) {
+    final l10n = AppLocalizations.of(context)!;
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Supprimer ?'),
-        content: Text('Voulez-vous vraiment supprimer le véhicule ${vehicle.registration} ?'),
+        title: Text('${l10n.delete} ?'),
+        content: Text(l10n.deleteConfirmVehicle(vehicle.registration)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('ANNULER')),
+          TextButton(onPressed: () => Navigator.pop(context), child: Text(l10n.cancel)),
           ElevatedButton(
             onPressed: () {
               viewModel.deleteVehicle(vehicle.id, ownerId: userId);
               Navigator.pop(context);
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('SUPPRIMER'),
+            child: Text(l10n.delete),
           ),
         ],
       ),
@@ -273,6 +278,7 @@ class _VehicleViewState extends State<VehicleView> {
   }
 
   void _showUpdateMileageDialog(BuildContext context, VehicleViewModel viewModel, Vehicle vehicle) {
+    final l10n = AppLocalizations.of(context)!;
     final controller = TextEditingController(text: vehicle.mileage.toInt().toString());
     showDialog(
       context: context,
@@ -281,13 +287,13 @@ class _VehicleViewState extends State<VehicleView> {
         content: TextField(
           controller: controller,
           keyboardType: TextInputType.number,
-          decoration: const InputDecoration(
-            labelText: 'Nouveau kilométrage (km)',
+          decoration: InputDecoration(
+            labelText: l10n.newMileage,
             suffixText: 'km',
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Annuler')),
+          TextButton(onPressed: () => Navigator.pop(context), child: Text(l10n.cancel)),
           ElevatedButton(
             onPressed: () {
               final newKm = double.tryParse(controller.text);
@@ -296,7 +302,7 @@ class _VehicleViewState extends State<VehicleView> {
               }
               Navigator.pop(context);
             },
-            child: const Text('Valider'),
+            child: Text(l10n.confirm),
           ),
         ],
       ),

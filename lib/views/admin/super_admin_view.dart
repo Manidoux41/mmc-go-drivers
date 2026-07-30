@@ -1,31 +1,34 @@
 import 'package:flutter/material.dart';
+import 'package:flutter01/l10n/app_localizations.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-import '../../viewmodels/super_admin_viewmodel.dart';
-import '../../viewmodels/login_viewmodel.dart';
-import '../../models/user.dart';
-import '../../models/subscription_tier.dart';
+import 'package:flutter01/viewmodels/super_admin_viewmodel.dart';
+import 'package:flutter01/viewmodels/login_viewmodel.dart';
+import 'package:flutter01/models/user.dart';
+import 'package:flutter01/models/subscription_tier.dart';
+import 'package:flutter01/config/colors.dart';
 
 class SuperAdminView extends StatelessWidget {
   const SuperAdminView({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return DefaultTabController(
       length: 3,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('MMC Go - Haute Administration'),
+          title: Text('MMC Go - ${l10n.superAdminTitle}'),
           backgroundColor: Colors.black87,
           foregroundColor: Colors.white,
-          bottom: const TabBar(
-            indicatorColor: Colors.orange,
+          bottom: TabBar(
+            indicatorColor: AppColors.tertiaryYellow,
             isScrollable: true,
             tabs: [
-              Tab(icon: Icon(Icons.admin_panel_settings), text: 'Utilisateurs'),
-              Tab(icon: Icon(Icons.mail_outline), text: 'Demandes Diamant'),
-              Tab(icon: Icon(Icons.code), text: 'Guide SQL Client'),
+              Tab(icon: const Icon(Icons.admin_panel_settings), text: l10n.users),
+              Tab(icon: const Icon(Icons.mail_outline), text: l10n.diamondRequests),
+              Tab(icon: const Icon(Icons.code), text: l10n.sqlGuide),
             ],
           ),
         ),
@@ -71,7 +74,7 @@ class _ManageGlobalUsersTabState extends State<_ManageGlobalUsersTab> {
               margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               child: ListTile(
                 leading: CircleAvatar(
-                  backgroundColor: user.isSuperAdmin ? Colors.orange : Colors.grey.shade200,
+                  backgroundColor: user.isSuperAdmin ? AppColors.accentOrange : Colors.grey.shade200,
                   child: Icon(user.isSuperAdmin ? Icons.star : Icons.person, color: user.isSuperAdmin ? Colors.white : Colors.grey),
                 ),
                 title: Text(user.fullName ?? 'Utilisateur Sans Nom'),
@@ -306,15 +309,15 @@ class AlertBox extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
-        color: Colors.orange.withValues(alpha: 0.1),
+        color: AppColors.accentOrange.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+        border: Border.all(color: AppColors.accentOrange.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
-          const Icon(Icons.info_outline, color: Colors.orange),
+          const Icon(Icons.info_outline, color: AppColors.accentOrange),
           const SizedBox(width: 15),
-          Expanded(child: Text(message, style: const TextStyle(fontSize: 13, color: Colors.orangeAccent))),
+          Expanded(child: Text(message, style: const TextStyle(fontSize: 13, color: AppColors.accentOrange))),
         ],
       ),
     );

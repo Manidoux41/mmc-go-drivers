@@ -1,19 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter01/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
-import '../../viewmodels/planning_viewmodel.dart';
-import '../../viewmodels/login_viewmodel.dart';
-import '../../viewmodels/vehicle_viewmodel.dart';
-import '../../models/planning_activity.dart';
-import '../../models/subscription_tier.dart';
-import '../../models/vehicle.dart';
-import '../../services/pdf_service.dart';
-import '../../services/storage_service.dart';
-import '../navigation/navigation_view.dart';
-import 'pdf_viewer_page.dart';
+import 'package:flutter01/viewmodels/planning_viewmodel.dart';
+import 'package:flutter01/viewmodels/login_viewmodel.dart';
+import 'package:flutter01/viewmodels/vehicle_viewmodel.dart';
+import 'package:flutter01/models/planning_activity.dart';
+import 'package:flutter01/models/subscription_tier.dart';
+import 'package:flutter01/models/vehicle.dart';
+import 'package:flutter01/services/pdf_service.dart';
+import 'package:flutter01/services/storage_service.dart';
+import 'package:flutter01/views/navigation/navigation_view.dart';
+import 'package:flutter01/views/planning/pdf_viewer_page.dart';
 
 class PlanningView extends StatefulWidget {
   const PlanningView({super.key});
@@ -41,9 +42,10 @@ class _PlanningViewState extends State<PlanningView> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Mon Planning'),
+        title: Text(l10n.myPlanning),
         backgroundColor: Theme.of(context).primaryColor,
         foregroundColor: Colors.white,
         actions: [
@@ -53,12 +55,12 @@ class _PlanningViewState extends State<PlanningView> {
               final vm = context.read<PlanningViewModel>();
               PdfService.generateAndSharePlanning(vm.selectedDate, vm.filteredActivities);
             },
-            tooltip: "Exporter en PDF",
+            tooltip: l10n.exportPdf,
           ),
           IconButton(
             icon: const Icon(Icons.today),
             onPressed: () => context.read<PlanningViewModel>().goToToday(),
-            tooltip: "Aujourd'hui",
+            tooltip: l10n.today,
           ),
           Consumer<PlanningViewModel>(
             builder: (context, vm, child) {
@@ -69,11 +71,11 @@ class _PlanningViewState extends State<PlanningView> {
                     final success = await vm.pasteActivity(vm.selectedDate);
                     if (context.mounted && success) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Mission collée avec succès')),
+                        SnackBar(content: Text(l10n.missionPasted)),
                       );
                     }
                   },
-                  tooltip: "Coller la mission copiée",
+                  tooltip: l10n.pasteMission,
                 );
               }
               return const SizedBox.shrink();
@@ -96,7 +98,7 @@ class _PlanningViewState extends State<PlanningView> {
                 _buildRSEWarnings(rseWarnings),
               Expanded(
                 child: viewModel.filteredActivities.isEmpty
-                    ? _buildEmptyState()
+                    ? _buildEmptyState(context)
                     : ListView.builder(
                         padding: const EdgeInsets.all(10),
                         itemCount: viewModel.filteredActivities.length,
@@ -140,6 +142,7 @@ class _PlanningViewState extends State<PlanningView> {
   }
 
   Future<void> _showDatePickerForPhoto(BuildContext context) async {
+    final l10n = AppLocalizations.of(context)!;
     final currentSelectedDate = context.read<PlanningViewModel>().selectedDate;
     final DateTime? pickedDate = await showDatePicker(
       context: context,
@@ -147,8 +150,8 @@ class _PlanningViewState extends State<PlanningView> {
       firstDate: DateTime(2020),
       lastDate: DateTime(2030),
       helpText: 'SÉLECTIONNEZ LA DATE DU PLANNING',
-      cancelText: 'ANNULER',
-      confirmText: 'CONTINUER',
+      cancelText: l10n.cancel,
+      confirmText: l10n.continueAction,
     );
 
     if (pickedDate != null && context.mounted) {
@@ -157,6 +160,7 @@ class _PlanningViewState extends State<PlanningView> {
   }
 
   void _showPhotoSourceDialog(BuildContext context, DateTime targetDate) {
+    final l10n = AppLocalizations.of(context)!;
     showModalBottomSheet(
       context: context,
       builder: (context) => SafeArea(
@@ -165,7 +169,7 @@ class _PlanningViewState extends State<PlanningView> {
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: Text(
-                'Source pour le ${DateFormat('dd/MM/yyyy').format(targetDate)}',
+                'Source pour le ${DateFormat('dd/MM/yyyy', Localizations.localeOf(context).toString()).format(targetDate)}',
                 style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
               ),
             ),
@@ -206,6 +210,7 @@ class _PlanningViewState extends State<PlanningView> {
   }
 
   void _showManualAddMissionDialog(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final titleController = TextEditingController();
     final departureController = TextEditingController();
     final arrivalController = TextEditingController();
@@ -220,14 +225,14 @@ class _PlanningViewState extends State<PlanningView> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Ajouter une mission personnelle'),
+          title: Text(l10n.addPersonalMission),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 TextField(controller: titleController, decoration: const InputDecoration(labelText: 'Titre (ex: Service Scolaire 41)')),
-                TextField(controller: departureController, decoration: const InputDecoration(labelText: 'Départ')),
-                TextField(controller: arrivalController, decoration: const InputDecoration(labelText: 'Arrivée')),
+                TextField(controller: departureController, decoration: InputDecoration(labelText: l10n.departure)),
+                TextField(controller: arrivalController, decoration: InputDecoration(labelText: l10n.arrival)),
                 TextField(
                   controller: descriptionController, 
                   decoration: const InputDecoration(labelText: 'Description / Notes (Optionnel)'),
@@ -275,7 +280,7 @@ class _PlanningViewState extends State<PlanningView> {
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Annuler')),
+            TextButton(onPressed: () => Navigator.pop(context), child: Text(l10n.cancel)),
             ElevatedButton(
               onPressed: () async {
                 final loginVM = Provider.of<LoginViewModel>(context, listen: false);
@@ -301,7 +306,7 @@ class _PlanningViewState extends State<PlanningView> {
                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Mission ajoutée et synchronisée')));
                 }
               },
-              child: const Text('ENREGISTRER'),
+              child: Text(l10n.save),
             ),
           ],
         ),
@@ -338,6 +343,7 @@ class _PlanningViewState extends State<PlanningView> {
   }
 
   Widget _buildActivityBlock(BuildContext context, PlanningActivity activity) {
+    final l10n = AppLocalizations.of(context)!;
     final timeFormat = DateFormat('HH:mm');
     final accentColor = _getAccentColor(context, activity.type);
     final vm = context.read<PlanningViewModel>();
@@ -393,7 +399,7 @@ class _PlanningViewState extends State<PlanningView> {
               constraints: const BoxConstraints(),
               padding: EdgeInsets.zero,
               onPressed: () => _showEditMissionDialog(context, activity),
-              tooltip: 'Modifier',
+              tooltip: l10n.edit,
             ),
             const SizedBox(width: 8),
             IconButton(
@@ -401,7 +407,7 @@ class _PlanningViewState extends State<PlanningView> {
               constraints: const BoxConstraints(),
               padding: EdgeInsets.zero,
               onPressed: () => _confirmDeleteMission(context, vm, activity),
-              tooltip: 'Supprimer',
+              tooltip: l10n.delete,
             ),
             const Spacer(),
             if (activity.type != ActivityType.photo_planning)
@@ -439,7 +445,7 @@ class _PlanningViewState extends State<PlanningView> {
                 margin: const EdgeInsets.only(top: 8),
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(color: accentColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(5)),
-                child: Text('Bus: ${activity.busNumber}', style: TextStyle(color: accentColor, fontSize: 12, fontWeight: FontWeight.bold)),
+                child: Text('${l10n.bus}: ${activity.busNumber}', style: TextStyle(color: accentColor, fontSize: 12, fontWeight: FontWeight.bold)),
               ),
           ],
         ),
@@ -456,13 +462,14 @@ class _PlanningViewState extends State<PlanningView> {
   }
 
   Widget _buildViewModeSelector(BuildContext context, PlanningViewModel viewModel) {
+    final l10n = AppLocalizations.of(context)!;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: SegmentedButton<PlanningViewMode>(
-        segments: const [
-          ButtonSegment(value: PlanningViewMode.day, label: Text('Jour')),
-          ButtonSegment(value: PlanningViewMode.week, label: Text('Semaine')),
-          ButtonSegment(value: PlanningViewMode.month, label: Text('Mois')),
+        segments: [
+          ButtonSegment(value: PlanningViewMode.day, label: Text(l10n.day)),
+          ButtonSegment(value: PlanningViewMode.week, label: Text(l10n.week)),
+          ButtonSegment(value: PlanningViewMode.month, label: Text(l10n.month)),
         ],
         selected: {viewModel.viewMode},
         onSelectionChanged: (Set<PlanningViewMode> newSelection) {
@@ -473,7 +480,8 @@ class _PlanningViewState extends State<PlanningView> {
   }
 
   Widget _buildDateNavigation(BuildContext context, PlanningViewModel viewModel) {
-    String locale = 'fr_FR';
+    final l10n = AppLocalizations.of(context)!;
+    String locale = Localizations.localeOf(context).toString();
     String dateText;
     
     if (viewModel.viewMode == PlanningViewMode.day) {
@@ -481,7 +489,7 @@ class _PlanningViewState extends State<PlanningView> {
     } else if (viewModel.viewMode == PlanningViewMode.week) {
       final weekStart = viewModel.selectedDate.subtract(Duration(days: viewModel.selectedDate.weekday - 1));
       final weekEnd = weekStart.add(const Duration(days: 6));
-      dateText = "Du ${DateFormat('d MMMM', locale).format(weekStart)} au ${DateFormat('d MMMM', locale).format(weekEnd)}";
+      dateText = l10n.fromTo(DateFormat('d MMMM', locale).format(weekStart), DateFormat('d MMMM', locale).format(weekEnd));
     } else {
       dateText = DateFormat('MMMM yyyy', locale).format(viewModel.selectedDate);
     }
@@ -506,22 +514,24 @@ class _PlanningViewState extends State<PlanningView> {
     );
   }
 
-  Widget _buildEmptyState() {
-    return const Center(
+  Widget _buildEmptyState(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.event_busy, size: 60, color: Colors.grey),
-          SizedBox(height: 16),
-          Text('Aucun trajet prévu pour cette période', style: TextStyle(color: Colors.grey, fontSize: 16)),
+          const Icon(Icons.event_busy, size: 60, color: Colors.grey),
+          const SizedBox(height: 16),
+          Text(l10n.noTrips, style: const TextStyle(color: Colors.grey, fontSize: 16)),
         ],
       ),
     );
   }
 
   void _showActivityDetails(BuildContext context, PlanningActivity activity) {
+    final l10n = AppLocalizations.of(context)!;
     final timeFormat = DateFormat('HH:mm');
-    final dateFormat = DateFormat('EEEE d MMMM', 'fr_FR');
+    final dateFormat = DateFormat('EEEE d MMMM', Localizations.localeOf(context).toString());
 
     showDialog(
       context: context,
@@ -533,19 +543,20 @@ class _PlanningViewState extends State<PlanningView> {
             children: [
               _buildDetailRow(Icons.calendar_today, 'Date', dateFormat.format(activity.startTime)),
               _buildDetailRow(Icons.access_time, 'Horaires', '${timeFormat.format(activity.startTime)} - ${timeFormat.format(activity.endTime)}'),
-              if (activity.busNumber != null) _buildDetailRow(Icons.directions_bus, 'Véhicule', activity.busNumber!),
+              if (activity.busNumber != null) _buildDetailRow(Icons.directions_bus, l10n.vehicle, activity.busNumber!),
               if (activity.departure != null) _buildDetailRow(Icons.location_on, 'Itinéraire', '${activity.departure} ➔ ${activity.arrival}'),
               if (activity.description != null && activity.description!.isNotEmpty)
                 _buildDetailRow(Icons.description, 'Description', activity.description!),
             ],
           ),
         ),
-        actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Fermer'))],
+        actions: [TextButton(onPressed: () => Navigator.pop(context), child: Text(l10n.cancel))],
       ),
     );
   }
 
   void _showEditMissionDialog(BuildContext context, PlanningActivity activity) {
+    final l10n = AppLocalizations.of(context)!;
     final titleController = TextEditingController(text: activity.title);
     final departureController = TextEditingController(text: activity.departure);
     final arrivalController = TextEditingController(text: activity.arrival);
@@ -620,7 +631,7 @@ class _PlanningViewState extends State<PlanningView> {
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Annuler')),
+            TextButton(onPressed: () => Navigator.pop(context), child: Text(l10n.cancel)),
             ElevatedButton(
               onPressed: () async {
                 final planningVM = Provider.of<PlanningViewModel>(context, listen: false);
@@ -646,7 +657,7 @@ class _PlanningViewState extends State<PlanningView> {
                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Mission mise à jour')));
                 }
               },
-              child: const Text('ENREGISTRER'),
+              child: Text(l10n.save),
             ),
           ],
         ),
@@ -655,6 +666,7 @@ class _PlanningViewState extends State<PlanningView> {
   }
 
   void _showActivityOptions(BuildContext context, PlanningViewModel vm, PlanningActivity activity) {
+    final l10n = AppLocalizations.of(context)!;
     showModalBottomSheet(
       context: context,
       builder: (context) => SafeArea(
@@ -673,7 +685,7 @@ class _PlanningViewState extends State<PlanningView> {
             ),
             ListTile(
               leading: const Icon(Icons.edit, color: Colors.blue),
-              title: const Text('Modifier la mission', style: TextStyle(color: Colors.blue)),
+              title: Text(l10n.edit, style: const TextStyle(color: Colors.blue)),
               onTap: () {
                 Navigator.pop(context);
                 _showEditMissionDialog(context, activity);
@@ -681,7 +693,7 @@ class _PlanningViewState extends State<PlanningView> {
             ),
             ListTile(
               leading: const Icon(Icons.delete, color: Colors.red),
-              title: const Text('Supprimer cette mission', style: TextStyle(color: Colors.red)),
+              title: Text(l10n.delete, style: const TextStyle(color: Colors.red)),
               onTap: () {
                 Navigator.pop(context);
                 _confirmDeleteMission(context, vm, activity);
@@ -694,13 +706,14 @@ class _PlanningViewState extends State<PlanningView> {
   }
 
   void _confirmDeleteMission(BuildContext context, PlanningViewModel vm, PlanningActivity activity) {
+    final l10n = AppLocalizations.of(context)!;
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Supprimer la mission ?'),
+        title: Text('${l10n.delete} ?'),
         content: Text('Voulez-vous vraiment supprimer "${activity.title}" ?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('ANNULER')),
+          TextButton(onPressed: () => Navigator.pop(context), child: Text(l10n.cancel)),
           ElevatedButton(
             onPressed: () async {
               final success = await vm.removeActivity(activity.id);
@@ -712,7 +725,7 @@ class _PlanningViewState extends State<PlanningView> {
               }
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('SUPPRIMER', style: TextStyle(color: Colors.white)),
+            child: Text(l10n.delete, style: const TextStyle(color: Colors.white)),
           ),
         ],
       ),

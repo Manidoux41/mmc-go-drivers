@@ -2,9 +2,9 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import 'package:flutter/foundation.dart';
-import '../models/vehicle.dart';
-import '../models/route_option.dart';
-import '../config/secrets.dart';
+import 'package:flutter01/models/vehicle.dart';
+import 'package:flutter01/models/route_option.dart';
+import 'package:flutter01/config/secrets.dart';
 
 class RoutingService {
   static const String _apiKey = AppSecrets.orsApiKey;
@@ -17,31 +17,66 @@ class RoutingService {
 
     List<RouteOption> allOptions = [];
 
-    // 1. Récupérer l'itinéraire RECOMMANDÉ (Fastest) avec alternatives
-    final recommendedOptions = await _fetchFromOrs(points, vehicle, "fastest", includeAlternatives: true);
-    allOptions.addAll(recommendedOptions);
-
-    // 2. Récupérer l'itinéraire LE PLUS COURT spécifiquement
-    // On ne le fait que si on n'a pas déjà un candidat très court ou si on veut être sûr
-    final shortestOptions = await _fetchFromOrs(points, vehicle, "shortest", includeAlternatives: false);
-    
-    // Éviter les doublons si le plus court est déjà dans les alternatives
-    for (var opt in shortestOptions) {
-      bool exists = allOptions.any((existing) => 
-        (existing.distance - opt.distance).abs() < 100 && 
-        (existing.duration - opt.duration).abs() < 60
+    try {
+      // 1. Essayer de récupérer l'itinéraire PL (HGV)
+      debugPrint('RoutingService: Attempting HGV route calculation...');
+      final recommendedOptions = await _fetchFromOrs(
+        points, 
+        vehicle, 
+        "fastest", 
+        profile: "driving-hgv",
+        includeAlternatives: true,
       );
-      if (!exists) {
-        allOptions.add(RouteOption(
-          points: opt.points,
-          distance: opt.distance,
-          duration: opt.duration,
-          type: RouteType.shortest,
-        ));
+      
+      if (recommendedOptions.isNotEmpty) {
+        allOptions.addAll(recommendedOptions);
+        
+        // 2. Récupérer l'itinéraire LE PLUS COURT PL spécifiquement
+        final shortestOptions = await _fetchFromOrs(
+          points, 
+          vehicle, 
+          "shortest", 
+          profile: "driving-hgv",
+          includeAlternatives: false,
+        );
+        
+        for (var opt in shortestOptions) {
+          bool exists = allOptions.any((existing) => 
+            (existing.distance - opt.distance).abs() < 100 && 
+            (existing.duration - opt.duration).abs() < 60
+          );
+          if (!exists) {
+            allOptions.add(RouteOption(
+              points: opt.points,
+              distance: opt.distance,
+              duration: opt.duration,
+              type: RouteType.shortest,
+            ));
+          }
+        }
       } else {
-        // Si il existe déjà, on s'assure qu'il est marqué comme plus court si c'est le cas
-        // ou on laisse tel quel.
+        // FALLBACK: Si le mode HGV échoue, essayer le mode CAR (Voiture)
+        debugPrint('RoutingService: HGV failed, falling back to Car profile...');
+        final carOptions = await _fetchFromOrs(
+          points, 
+          vehicle, 
+          "fastest", 
+          profile: "driving-car",
+          includeAlternatives: false,
+        );
+        
+        if (carOptions.isNotEmpty) {
+          allOptions.addAll(carOptions.map((o) => RouteOption(
+            points: o.points,
+            distance: o.distance,
+            duration: o.duration,
+            type: RouteType.alternative, // Marqué comme alternatif car c'est un fallback
+          )));
+          debugPrint('RoutingService: Car fallback successful (BEWARE: No HGV restrictions applied)');
+        }
       }
+    } catch (e) {
+      debugPrint('RoutingService: Critical error during routing: $e');
     }
 
     return allOptions;
@@ -51,13 +86,23 @@ class RoutingService {
     List<LatLng> points, 
     Vehicle vehicle, 
     String preference, 
-    {bool includeAlternatives = false}
+    {
+      String profile = "driving-hgv",
+      bool includeAlternatives = false,
+    }
   ) async {
-    final url = Uri.parse('https://api.openrouteservice.org/v2/directions/driving-hgv/geojson');
+    final url = Uri.parse('https://api.openrouteservice.org/v2/directions/$profile/geojson');
     
     Map<String, dynamic> bodyMap = {
       "coordinates": points.map((p) => [p.longitude, p.latitude]).toList(),
-      "options": {
+      "preference": preference,
+      "units": "m",
+      "language": "fr"
+    };
+
+    // Les options de gabarit ne sont valides que pour le profil HGV
+    if (profile == "driving-hgv") {
+      bodyMap["options"] = {
         "vehicle_type": "hgv",
         "profile_params": {
           "restrictions": {
@@ -67,11 +112,8 @@ class RoutingService {
             "weight": vehicle.ptac
           }
         }
-      },
-      "preference": preference,
-      "units": "m",
-      "language": "fr"
-    };
+      };
+    }
 
     if (includeAlternatives) {
       bodyMap["alternative_routes"] = {
@@ -82,6 +124,7 @@ class RoutingService {
     }
 
     try {
+      debugPrint('RoutingService: POST request to ORS ($profile)...');
       final response = await http.post(
         url,
         headers: {
@@ -90,7 +133,7 @@ class RoutingService {
           'Accept': 'application/json, application/geo+json',
         },
         body: jsonEncode(bodyMap),
-      );
+      ).timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -121,9 +164,11 @@ class RoutingService {
           ));
         }
         return results;
+      } else {
+        debugPrint('RoutingService: ORS API Error ${response.statusCode}: ${response.body}');
       }
     } catch (e) {
-      debugPrint('Erreur ORS _fetch: $e');
+      debugPrint('RoutingService: Exception during ORS fetch: $e');
     }
     return [];
   }

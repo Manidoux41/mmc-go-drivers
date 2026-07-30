@@ -1,4 +1,4 @@
-import 'vehicle.dart';
+import 'package:flutter01/models/vehicle.dart';
 import 'package:latlong2/latlong.dart';
 
 enum ActivityType { ps, fs, trip, nettoyage, hlp, bc, photo_planning }

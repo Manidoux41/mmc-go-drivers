@@ -11,13 +11,13 @@ import 'package:latlong2/latlong.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:mongo_dart/mongo_dart.dart' show where;
-import '../models/recorded_trip.dart';
+import 'package:flutter01/models/recorded_trip.dart';
 import 'package:flutter01/services/mongo_service.dart';
 import 'package:flutter01/services/mongo_auth_service.dart';
-import '../models/vehicle.dart';
-import '../models/planning_activity.dart' hide Waypoint;
-import '../models/route_option.dart';
-import '../services/routing_service.dart';
+import 'package:flutter01/models/vehicle.dart';
+import 'package:flutter01/models/planning_activity.dart' hide Waypoint;
+import 'package:flutter01/models/route_option.dart';
+import 'package:flutter01/services/routing_service.dart';
 
 class NavigationViewModel extends ChangeNotifier {
   bool _isRecording = false;
@@ -271,16 +271,11 @@ class NavigationViewModel extends ChangeNotifier {
     // 3. Sauvegarder le NOM et les stats en BASE DE DONNÉES (MongoDB)
     if (userId != null) {
       try {
-        await MongoService.recordedTrips.insertOne({
-          'name': name,
-          'driver_id': userId,
-          'start_time': startTime.toIso8601String(),
-          'end_time': endTime.toIso8601String(),
-          'total_distance': _totalDistance,
-          'max_speed': _maxSpeed,
-          'local_file_path': localPath,
-        });
-        debugPrint("TRACE : Nom de la ligne enregistré en DB");
+        final dataToSave = newTrip.toJson();
+        dataToSave['driver_id'] = userId; // Indispensable pour filtrer par chauffeur
+        
+        await MongoService.recordedTrips.insertOne(dataToSave);
+        debugPrint("TRACE : Trajet complet enregistré en DB (Points: ${newTrip.trackPoints.length})");
       } catch (e) {
         debugPrint("TRACE ERREUR : Échec enregistrement DB : $e");
       }
@@ -348,13 +343,52 @@ class NavigationViewModel extends ChangeNotifier {
         )
       ];
       _selectedRouteIndex = 0;
-      _plannedWaypoints = [trip.trackPoints.first.point, trip.trackPoints.last.point];
+      
+      // Points de départ/arrivée pour les marqueurs A/B
+      if (trip.waypoints.isNotEmpty) {
+        _plannedWaypoints = trip.waypoints.map((w) => w.point).toList();
+      } else {
+        _plannedWaypoints = [trip.trackPoints.first.point, trip.trackPoints.last.point];
+      }
     }
     _currentWaypoints = List.from(trip.waypoints);
     _totalDistance = trip.totalDistance;
     _maxSpeed = trip.maxSpeed;
     _maxAltitude = trip.maxAltitude;
     notifyListeners();
+  }
+
+  /// Transforme une trace GPS brute en itinéraire suivant les routes réelles
+  /// en se basant sur les étapes (waypoints) enregistrées.
+  Future<void> optimizeRecordedTrip(RecordedTrip trip, Vehicle vehicle) async {
+    if (trip.waypoints.length < 2) {
+      // Si pas assez de waypoints, on prend le premier et dernier point de la trace
+      if (trip.trackPoints.length < 2) return;
+      _plannedWaypoints = [trip.trackPoints.first.point, trip.trackPoints.last.point];
+    } else {
+      _plannedWaypoints = trip.waypoints.map((w) => w.point).toList();
+    }
+
+    _isCalculating = true;
+    notifyListeners();
+
+    try {
+      final optimizedRoutes = await RoutingService.getHeavyVehicleRoutes(
+        points: _plannedWaypoints,
+        vehicle: vehicle,
+      );
+
+      if (optimizedRoutes.isNotEmpty) {
+        _routeOptions = optimizedRoutes;
+        _selectedRouteIndex = 0;
+        debugPrint("NavigationViewModel: Trip optimized with road-following points.");
+      }
+    } catch (e) {
+      debugPrint("NavigationViewModel: Optimization failed: $e");
+    } finally {
+      _isCalculating = false;
+      notifyListeners();
+    }
   }
 
   void clearPlannedRoute() {
@@ -372,31 +406,39 @@ class NavigationViewModel extends ChangeNotifier {
     _selectedRouteIndex = 0;
     notifyListeners();
 
-    List<LatLng> waypoints = [];
-    for (var addr in addresses) {
-      final query = addr.trim();
-      if (query.isEmpty) continue;
-      
-      if (query.toLowerCase() == 'ma position') {
-        final pos = _currentPosition ?? const LatLng(48.069, 1.325);
-        waypoints.add(pos);
-        continue;
+    try {
+      List<LatLng> waypoints = [];
+      for (var addr in addresses) {
+        final query = addr.trim();
+        if (query.isEmpty) continue;
+        
+        if (query.toLowerCase() == 'ma position') {
+          final pos = _currentPosition ?? const LatLng(48.069, 1.325);
+          waypoints.add(pos);
+          continue;
+        }
+        
+        final coords = await RoutingService.geocode(query);
+        if (coords != null) waypoints.add(coords);
       }
-      
-      final coords = await RoutingService.geocode(query);
-      if (coords != null) waypoints.add(coords);
-    }
 
-    if (waypoints.length >= 2) {
-      _plannedWaypoints = List.from(waypoints);
-      _routeOptions = await RoutingService.getHeavyVehicleRoutes(
-        points: waypoints,
-        vehicle: vehicle,
-      );
+      if (waypoints.length >= 2) {
+        _plannedWaypoints = List.from(waypoints);
+        _routeOptions = await RoutingService.getHeavyVehicleRoutes(
+          points: waypoints,
+          vehicle: vehicle,
+        );
+        
+        if (_routeOptions.isEmpty) {
+          debugPrint('NavigationViewModel: Routing failed to return any paths.');
+        }
+      }
+    } catch (e) {
+      debugPrint('NavigationViewModel: Error in calculateMultiStopRoute: $e');
+    } finally {
+      _isCalculating = false;
+      notifyListeners();
     }
-
-    _isCalculating = false;
-    notifyListeners();
   }
 
   Future<void> calculateRouteFromActivity(PlanningActivity activity) async {
@@ -409,13 +451,17 @@ class NavigationViewModel extends ChangeNotifier {
     _selectedRouteIndex = 0;
     notifyListeners();
 
-    _routeOptions = await RoutingService.getHeavyVehicleRoutes(
-      points: _plannedWaypoints,
-      vehicle: activity.vehicle!,
-    );
-
-    _isCalculating = false;
-    notifyListeners();
+    try {
+      _routeOptions = await RoutingService.getHeavyVehicleRoutes(
+        points: _plannedWaypoints,
+        vehicle: activity.vehicle!,
+      );
+    } catch (e) {
+      debugPrint('NavigationViewModel: Error in calculateRouteFromActivity: $e');
+    } finally {
+      _isCalculating = false;
+      notifyListeners();
+    }
   }
 
   Future<void> exportToKML() async {
@@ -451,15 +497,20 @@ class NavigationViewModel extends ChangeNotifier {
     _isCalculating = true;
     _routeOptions = [];
     _selectedRouteIndex = 0;
+    _plannedWaypoints = [start, destination];
     notifyListeners();
     
-    _routeOptions = await RoutingService.getHeavyVehicleRoutes(
-      points: [start, destination], 
-      vehicle: vehicle
-    );
-
-    _isCalculating = false;
-    notifyListeners();
+    try {
+      _routeOptions = await RoutingService.getHeavyVehicleRoutes(
+        points: [start, destination], 
+        vehicle: vehicle
+      );
+    } catch (e) {
+      debugPrint('NavigationViewModel: Error in calculateTruckRoute: $e');
+    } finally {
+      _isCalculating = false;
+      notifyListeners();
+    }
   }
 
   Future<void> importKml() async {
