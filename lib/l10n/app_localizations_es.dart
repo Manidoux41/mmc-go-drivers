@@ -531,4 +531,10 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get terrainView => 'Vista Relieve';
+
+  @override
+  String get deleteTrip => 'Eliminar trayecto';
+
+  @override
+  String get importKml => 'Importer un KML';
 }

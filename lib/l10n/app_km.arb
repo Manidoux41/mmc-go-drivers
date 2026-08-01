@@ -167,5 +167,6 @@
   "mapLayers": "ស្រទាប់ផែនទី",
   "standardView": "ទិដ្ឋភាពប្លង់",
   "satelliteView": "ទិដ្ឋភាពផ្កាយរណប",
-  "terrainView": "ទិដ្ឋភាពដី"
+  "terrainView": "ទិដ្ឋភាពដី",
+  "deleteTrip": "លុបដំណើរ"
 }

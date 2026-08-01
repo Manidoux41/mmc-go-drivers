@@ -167,5 +167,6 @@
   "mapLayers": "地图图层",
   "standardView": "平面视图",
   "satelliteView": "卫星视图",
-  "terrainView": "地形视图"
+  "terrainView": "地形视图",
+  "deleteTrip": "删除行程"
 }

@@ -1,4 +1,5 @@
 import 'package:latlong2/latlong.dart';
+import 'package:mongo_dart/mongo_dart.dart' show ObjectId;
 
 class TrackPoint {
   final LatLng point;
@@ -59,6 +60,7 @@ class Waypoint {
 }
 
 class RecordedTrip {
+  final ObjectId? mongoId;
   final String id;
   final String name;
   final List<TrackPoint> trackPoints;
@@ -76,6 +78,7 @@ class RecordedTrip {
   final String? localFilePath;
 
   RecordedTrip({
+    this.mongoId,
     required this.id,
     required this.name,
     required this.trackPoints,
@@ -90,6 +93,7 @@ class RecordedTrip {
   });
 
   Map<String, dynamic> toJson() => {
+    if (mongoId != null) '_id': mongoId,
     'id': id,
     'name': name,
     'points': trackPoints.map((p) => p.toJson()).toList(),
@@ -104,6 +108,7 @@ class RecordedTrip {
   };
 
   factory RecordedTrip.fromJson(Map<String, dynamic> json) => RecordedTrip(
+    mongoId: json['_id'],
     id: json['id'],
     name: json['name'],
     trackPoints: json['points'] != null 

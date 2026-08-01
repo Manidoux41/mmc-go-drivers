@@ -1117,6 +1117,18 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Vue Relief'**
   String get terrainView;
+
+  /// No description provided for @deleteTrip.
+  ///
+  /// In fr, this message translates to:
+  /// **'Supprimer le trajet'**
+  String get deleteTrip;
+
+  /// No description provided for @importKml.
+  ///
+  /// In fr, this message translates to:
+  /// **'Importer un KML'**
+  String get importKml;
 }
 
 class _AppLocalizationsDelegate

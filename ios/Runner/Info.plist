@@ -86,5 +86,40 @@
 		</array>
 		<key>UIStatusBarHidden</key>
 		<false/>
+		<key>CFBundleDocumentTypes</key>
+		<array>
+			<dict>
+				<key>CFBundleTypeName</key>
+				<string>KML File</string>
+				<key>LSHandlerRank</key>
+				<string>Owner</string>
+				<key>LSItemContentTypes</key>
+				<array>
+					<string>com.google.earth.kml</string>
+				</array>
+			</dict>
+		</array>
+		<key>UTImportedTypeDeclarations</key>
+		<array>
+			<dict>
+				<key>UTTypeConformsTo</key>
+				<array>
+					<string>public.xml</string>
+				</array>
+				<key>UTTypeDescription</key>
+				<string>KML File</string>
+				<key>UTTypeIdentifier</key>
+				<string>com.google.earth.kml</string>
+				<key>UTTypeTagSpecification</key>
+				<dict>
+					<key>public.filename-extension</key>
+					<array>
+						<string>kml</string>
+					</array>
+					<key>public.mime-type</key>
+					<string>application/vnd.google-earth.kml+xml</string>
+				</dict>
+			</dict>
+		</array>
 	</dict>
 </plist>

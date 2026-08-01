@@ -167,5 +167,6 @@
   "mapLayers": "Kartenansichten",
   "standardView": "Standardansicht",
   "satelliteView": "Satellitenansicht",
-  "terrainView": "Reliefansicht"
+  "terrainView": "Reliefansicht",
+  "deleteTrip": "Fahrt löschen"
 }

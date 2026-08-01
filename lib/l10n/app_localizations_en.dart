@@ -528,4 +528,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get terrainView => 'Terrain View';
+
+  @override
+  String get deleteTrip => 'Delete trip';
+
+  @override
+  String get importKml => 'Import KML';
 }

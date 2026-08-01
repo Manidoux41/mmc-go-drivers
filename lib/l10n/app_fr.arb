@@ -167,5 +167,7 @@
   "mapLayers": "Calques de carte",
   "standardView": "Vue Plan",
   "satelliteView": "Vue Satellite",
-  "terrainView": "Vue Relief"
+  "terrainView": "Vue Relief",
+  "deleteTrip": "Supprimer le trajet",
+  "importKml": "Importer un KML"
 }

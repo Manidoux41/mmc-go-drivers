@@ -527,4 +527,10 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get terrainView => 'عرض التضاريس';
+
+  @override
+  String get deleteTrip => 'حذف الرحلة';
+
+  @override
+  String get importKml => 'Importer un KML';
 }

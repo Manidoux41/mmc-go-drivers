@@ -167,5 +167,6 @@
   "mapLayers": "Capas del mapa",
   "standardView": "Vista Plano",
   "satelliteView": "Vista Satélite",
-  "terrainView": "Vista Relieve"
+  "terrainView": "Vista Relieve",
+  "deleteTrip": "Eliminar trayecto"
 }

@@ -10,7 +10,9 @@ import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:mongo_dart/mongo_dart.dart' show where;
+import 'package:wakelock_plus/wakelock_plus.dart';
+import 'package:receive_sharing_intent/receive_sharing_intent.dart';
+import 'package:mongo_dart/mongo_dart.dart' show where, ObjectId;
 import 'package:flutter01/models/recorded_trip.dart';
 import 'package:flutter01/services/mongo_service.dart';
 import 'package:flutter01/services/mongo_auth_service.dart';
@@ -89,24 +91,152 @@ class NavigationViewModel extends ChangeNotifier {
   bool _isNavigatingCalculated = false;
   bool get isNavigatingCalculated => _isNavigatingCalculated;
 
+  RouteStep? _nextStep;
+  RouteStep? get nextStep => _nextStep;
+
+  double _distanceToNextStep = 0; // meters
+  double get distanceToNextStep => _distanceToNextStep;
+
+  double _durationToArrival = 0; // seconds
+  double get durationToArrival => _durationToArrival;
+
+  double _distanceToArrival = 0; // meters
+  double get distanceToArrival => _distanceToArrival;
+
+  StreamSubscription? _sharingStreamSubscription;
+
   NavigationViewModel() {
     _initLocation();
     _loadTripsFromDb();
+    _initSharing();
+  }
+
+  void _initSharing() {
+    // Écouter les fichiers partagés pendant que l'app est ouverte
+    _sharingStreamSubscription = ReceiveSharingIntent.instance.getMediaStream().listen((List<SharedMediaFile> value) {
+      if (value.isNotEmpty) {
+        final kmlFile = value.firstWhere((f) => f.path.endsWith('.kml'), orElse: () => value.first);
+        processKmlFile(File(kmlFile.path));
+      }
+    }, onError: (err) {
+      debugPrint("TRACE : Erreur getMediaStream : $err");
+    });
+
+    // Vérifier si l'app a été ouverte via un fichier (app fermée au départ)
+    ReceiveSharingIntent.instance.getInitialMedia().then((List<SharedMediaFile> value) {
+      if (value.isNotEmpty) {
+        final kmlFile = value.firstWhere((f) => f.path.endsWith('.kml'), orElse: () => value.first);
+        processKmlFile(File(kmlFile.path));
+      }
+    });
+  }
+
+  Future<void> processKmlFile(File file) async {
+    try {
+      final content = await file.readAsString();
+      final document = xml.XmlDocument.parse(content);
+      
+      // Recherche récursive de toutes les balises <coordinates>
+      final coordinatesNodes = document.findAllElements('coordinates');
+      List<LatLng> allPoints = [];
+      
+      for (var node in coordinatesNodes) {
+        final coordString = node.text.trim();
+        if (coordString.isEmpty) continue;
+        
+        // Séparateur peut être espace, tabulation ou saut de ligne
+        final parts = coordString.split(RegExp(r'[\s\n\t]+'));
+        for (var part in parts) {
+          final subParts = part.split(',');
+          if (subParts.length >= 2) {
+            final lng = double.tryParse(subParts[0].trim());
+            final lat = double.tryParse(subParts[1].trim());
+            if (lat != null && lng != null) {
+              allPoints.add(LatLng(lat, lng));
+            }
+          }
+        }
+      }
+
+      if (allPoints.isNotEmpty) {
+        _routeOptions = [
+          RouteOption(
+            points: allPoints,
+            distance: 0, // Sera calculé si besoin lors du suivi
+            duration: 0,
+            type: RouteType.recommended,
+            steps: [], // On pourrait générer des étapes ici
+          )
+        ];
+        _selectedRouteIndex = 0;
+        _plannedWaypoints = [allPoints.first, allPoints.last];
+        notifyListeners();
+        debugPrint("TRACE : KML importé avec succès (${allPoints.length} points)");
+      } else {
+        debugPrint("TRACE : Le fichier KML ne contient pas de coordonnées valides.");
+      }
+    } catch (e) {
+      debugPrint("TRACE ERREUR : Échec du traitement KML : $e");
+    }
   }
 
   Future<void> _loadTripsFromDb() async {
     final userId = await MongoAuthService.getCurrentSessionUserId();
+    List<RecordedTrip> trips = [];
+
+    // 1. Charger depuis MongoDB (Cloud)
     if (userId != null) {
       try {
         final data = await MongoService.recordedTrips
             .find(where.eq('driver_id', userId).sortBy('start_time', descending: true))
             .toList();
         
-        _savedTrips = data.map((json) => RecordedTrip.fromJson(json)).toList();
-        notifyListeners();
+        trips.addAll(data.map((json) => RecordedTrip.fromJson(json)));
+        debugPrint("TRACE : ${data.length} trajets chargés depuis MongoDB.");
       } catch (e) {
-        debugPrint("TRACE : Erreur chargement historique : $e");
+        debugPrint("TRACE : Erreur MongoDB : $e. Passage au mode local.");
       }
+    }
+
+    // 2. Charger les fichiers locaux (Cache) pour voir s'il y a des doublons ou des fichiers non sync
+    if (!kIsWeb) {
+      try {
+        final directory = await getApplicationDocumentsDirectory();
+        final files = directory.listSync().where((f) => f.path.endsWith('.kml'));
+        debugPrint("TRACE : ${files.length} fichiers KML locaux trouvés.");
+        // Pour l'instant on se fie surtout à la DB, mais on pourrait parser les KML ici si besoin
+      } catch (e) {
+        debugPrint("TRACE : Erreur lecture cache local : $e");
+      }
+    }
+
+    _savedTrips = trips;
+    notifyListeners();
+  }
+
+  Future<void> deleteTrip(RecordedTrip trip) async {
+    try {
+      // 1. Supprimer de MongoDB
+      if (trip.mongoId != null) {
+        await MongoService.recordedTrips.deleteOne(where.id(trip.mongoId!));
+      } else {
+        await MongoService.recordedTrips.deleteOne(where.eq('id', trip.id));
+      }
+
+      // 2. Supprimer le fichier local
+      if (trip.localFilePath != null) {
+        final file = File(trip.localFilePath!);
+        if (await file.exists()) {
+          await file.delete();
+        }
+      }
+
+      // 3. Mettre à jour la liste locale
+      _savedTrips.removeWhere((t) => t.id == trip.id);
+      notifyListeners();
+      debugPrint("TRACE : Trajet ${trip.name} supprimé avec succès.");
+    } catch (e) {
+      debugPrint("TRACE ERREUR : Échec suppression trajet : $e");
     }
   }
 
@@ -124,6 +254,7 @@ class NavigationViewModel extends ChangeNotifier {
     if (_routeOptions.isNotEmpty) {
       _isNavigatingCalculated = true;
       _isFollowing = true;
+      _updateWakelock();
       notifyListeners();
     }
   }
@@ -131,6 +262,7 @@ class NavigationViewModel extends ChangeNotifier {
   void stopCalculatedNavigation() {
     _isNavigatingCalculated = false;
     _isFollowing = false;
+    _updateWakelock();
     notifyListeners();
   }
 
@@ -203,11 +335,84 @@ class NavigationViewModel extends ChangeNotifier {
     }
 
     _currentPosition = newPoint;
+
+    if (_isNavigatingCalculated && _routeOptions.isNotEmpty) {
+      _updateNavigationGuidance(newPoint);
+    }
+
     notifyListeners();
+  }
+
+  void _updateNavigationGuidance(LatLng currentPos) {
+    final route = _routeOptions[_selectedRouteIndex];
+    if (route.steps.isEmpty) return;
+
+    // 1. Trouver l'étape actuelle (la plus proche devant nous)
+    // On cherche l'étape dont l'indice de point est juste après notre position sur le tracé
+    // Pour simplifier, on cherche l'étape la plus proche dans un rayon de 50m
+    RouteStep? currentStep;
+    double minStepDist = double.infinity;
+    int currentStepIdx = -1;
+
+    for (int i = 0; i < route.steps.length; i++) {
+      final step = route.steps[i];
+      final d = Geolocator.distanceBetween(
+        currentPos.latitude, currentPos.longitude,
+        step.location.latitude, step.location.longitude
+      );
+      if (d < 50 && d < minStepDist) {
+        minStepDist = d;
+        currentStepIdx = i;
+      }
+    }
+
+    // Si on a trouvé une étape proche, la suivante est celle d'après
+    if (currentStepIdx != -1 && currentStepIdx < route.steps.length - 1) {
+      _nextStep = route.steps[currentStepIdx + 1];
+    } else if (_nextStep == null) {
+      _nextStep = route.steps.first;
+    }
+
+    // 2. Calculer les distances
+    if (_nextStep != null) {
+      _distanceToNextStep = Geolocator.distanceBetween(
+        currentPos.latitude, currentPos.longitude,
+        _nextStep!.location.latitude, _nextStep!.location.longitude
+      );
+    }
+
+    // Distance totale à l'arrivée (somme des segments restants + distance au prochain point du tracé)
+    // Pour simplifier, on prend la distance à vol d'oiseau vers la destination finale
+    final destination = route.points.last;
+    _distanceToArrival = Geolocator.distanceBetween(
+      currentPos.latitude, currentPos.longitude,
+      destination.latitude, destination.longitude
+    );
+    
+    if (_distanceToArrival < 30) {
+      _nextStep = RouteStep(
+        distance: 0,
+        duration: 0,
+        type: 10,
+        instruction: "Vous êtes arrivé à destination",
+        name: "",
+        location: destination,
+        waypointIndex: route.points.length - 1
+      );
+    }
+
+    // Estimation du temps restant (basé sur la vitesse moyenne de 50km/h si arrêt, sinon vitesse actuelle)
+    final speedMs = (_currentSpeed > 5) ? (_currentSpeed / 3.6) : (50 / 3.6);
+    _durationToArrival = _distanceToArrival / speedMs;
+  }
+
+  void _updateWakelock() {
+    WakelockPlus.toggle(enable: _isRecording || _isNavigatingCalculated);
   }
 
   void startRecording() {
     _isRecording = true;
+    _updateWakelock();
     _recordedTrackPoints = [];
     _currentWaypoints = [];
     _totalDistance = 0;
@@ -229,6 +434,7 @@ class NavigationViewModel extends ChangeNotifier {
 
   Future<void> stopRecording(String name, String? userId) async {
     _isRecording = false;
+    _updateWakelock();
     
     final startTime = _recordingStartTime ?? DateTime.now();
     final endTime = DateTime.now();
@@ -515,48 +721,13 @@ class NavigationViewModel extends ChangeNotifier {
 
   Future<void> importKml() async {
     try {
-      final result = await FilePicker.platform.pickFiles(
+      final result = await FilePicker.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['kml'],
       );
 
       if (result != null && result.files.single.path != null) {
-        final file = File(result.files.single.path!);
-        final content = await file.readAsString();
-        
-        final document = xml.XmlDocument.parse(content);
-        final coordinatesNodes = document.findAllElements('coordinates');
-        
-        if (coordinatesNodes.isNotEmpty) {
-          final coordString = coordinatesNodes.first.text.trim();
-          final List<LatLng> points = [];
-          
-          final parts = coordString.split(RegExp(r'\s+'));
-          for (var part in parts) {
-            final subParts = part.split(',');
-            if (subParts.length >= 2) {
-              final lng = double.tryParse(subParts[0]);
-              final lat = double.tryParse(subParts[1]);
-              if (lat != null && lng != null) {
-                points.add(LatLng(lat, lng));
-              }
-            }
-          }
-
-          if (points.isNotEmpty) {
-            _routeOptions = [
-              RouteOption(
-                points: points,
-                distance: 0,
-                duration: 0,
-                type: RouteType.recommended,
-              )
-            ];
-            _selectedRouteIndex = 0;
-            _plannedWaypoints = [points.first, points.last];
-            notifyListeners();
-          }
-        }
+        await processKmlFile(File(result.files.single.path!));
       }
     } on PlatformException catch (e) {
       if (e.code == 'error' && e.message?.contains('MissingPluginException') == true) {
@@ -574,6 +745,7 @@ class NavigationViewModel extends ChangeNotifier {
   @override
   void dispose() {
     _positionStreamSubscription?.cancel();
+    _sharingStreamSubscription?.cancel();
     super.dispose();
   }
 }

@@ -97,7 +97,8 @@ class RoutingService {
       "coordinates": points.map((p) => [p.longitude, p.latitude]).toList(),
       "preference": preference,
       "units": "m",
-      "language": "fr"
+      "language": "fr",
+      "instructions": true,
     };
 
     // Les options de gabarit ne sont valides que pour le profil HGV
@@ -148,6 +149,16 @@ class RoutingService {
           final summary = feature['properties']['summary'];
           final distance = (summary['distance'] as num).toDouble();
           final duration = (summary['duration'] as num).toDouble();
+
+          // Parsing des instructions (steps)
+          List<RouteStep> routeSteps = [];
+          final segments = feature['properties']['segments'] as List<dynamic>;
+          for (var segment in segments) {
+            final steps = segment['steps'] as List<dynamic>;
+            for (var step in steps) {
+              routeSteps.add(RouteStep.fromJson(step, routePoints));
+            }
+          }
           
           RouteType type;
           if (preference == "shortest") {
@@ -161,6 +172,7 @@ class RoutingService {
             distance: distance,
             duration: duration,
             type: type,
+            steps: routeSteps,
           ));
         }
         return results;

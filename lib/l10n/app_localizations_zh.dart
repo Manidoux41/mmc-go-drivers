@@ -527,4 +527,10 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get terrainView => '地形视图';
+
+  @override
+  String get deleteTrip => '删除行程';
+
+  @override
+  String get importKml => 'Importer un KML';
 }

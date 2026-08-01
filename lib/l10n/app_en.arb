@@ -167,5 +167,7 @@
   "mapLayers": "Map Layers",
   "standardView": "Plan View",
   "satelliteView": "Satellite View",
-  "terrainView": "Terrain View"
+  "terrainView": "Terrain View",
+  "deleteTrip": "Delete trip",
+  "importKml": "Import KML"
 }

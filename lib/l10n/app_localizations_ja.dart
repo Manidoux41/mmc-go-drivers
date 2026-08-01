@@ -527,4 +527,10 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get terrainView => '地形ビュー';
+
+  @override
+  String get deleteTrip => '旅行を削除';
+
+  @override
+  String get importKml => 'Importer un KML';
 }

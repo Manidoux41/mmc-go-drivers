@@ -18,7 +18,6 @@ import 'package:flutter01/models/planning_activity.dart' hide Waypoint;
 import 'package:flutter01/models/recorded_trip.dart';
 import 'package:flutter01/models/vehicle.dart';
 import 'package:flutter01/models/subscription_tier.dart';
-import 'package:flutter01/models/route_option.dart';
 import 'package:flutter01/views/login/login_view.dart';
 import 'package:flutter01/views/dashboard/dashboard_view.dart';
 import 'package:flutter01/views/subscription/paywall_view.dart';
@@ -382,6 +381,10 @@ class _NavigationViewState extends State<NavigationView> {
               if (viewModel.isRecording || _showStatsPanel)
                 _buildStatsDashboard(context, viewModel),
 
+              // Overlay de guidage Turn-by-Turn
+              if (viewModel.isNavigatingCalculated && viewModel.nextStep != null)
+                _buildNavigationOverlay(context, viewModel),
+
               // Affichage des contraintes véhicule
                   if (widget.activity?.vehicle != null)
                     Positioned(
@@ -710,7 +713,12 @@ class _NavigationViewState extends State<NavigationView> {
                   IconButton(
                     icon: const Icon(Icons.file_open, color: Colors.blue),
                     tooltip: 'Importer KML',
-                    onPressed: () => viewModel.importKml(),
+                    onPressed: () async {
+                      await viewModel.importKml();
+                      if (context.mounted && viewModel.routeOptions.isNotEmpty) {
+                        _showFollowImportedConfirm(context, viewModel);
+                      }
+                    },
                   ),
                   const SizedBox(width: 8),
                   Expanded(
@@ -895,7 +903,27 @@ class _NavigationViewState extends State<NavigationView> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            Text(l10n.tripHistory, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(l10n.tripHistory, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                ElevatedButton.icon(
+                  onPressed: () async {
+                    await viewModel.importKml();
+                    if (context.mounted && viewModel.routeOptions.isNotEmpty) {
+                      Navigator.pop(context); // Fermer l'historique pour voir la carte
+                      _showFollowImportedConfirm(context, viewModel);
+                    }
+                  },
+                  icon: const Icon(Icons.file_open, size: 18),
+                  label: Text(l10n.importKml.toUpperCase(), style: const TextStyle(fontSize: 12)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue.shade50,
+                    foregroundColor: Colors.blue.shade800,
+                  ),
+                ),
+              ],
+            ),
             const Divider(),
             Expanded(
               child: ListView.builder(
@@ -918,6 +946,11 @@ class _NavigationViewState extends State<NavigationView> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           IconButton(
+                            icon: const Icon(Icons.delete_outline, color: Colors.red),
+                            tooltip: l10n.delete,
+                            onPressed: () => _showDeleteConfirm(context, viewModel, trip),
+                          ),
+                          IconButton(
                             icon: const Icon(Icons.auto_fix_high, color: Colors.purple),
                             tooltip: 'Optimiser le tracé (Suivre les routes)',
                             onPressed: () {
@@ -934,6 +967,7 @@ class _NavigationViewState extends State<NavigationView> {
                           IconButton(icon: const Icon(Icons.share, color: Colors.blue), onPressed: () => viewModel.shareTrip(trip)),
                           IconButton(icon: const Icon(Icons.play_circle_fill, color: Colors.green, size: 30), onPressed: () {
                             viewModel.loadTrip(trip);
+                            viewModel.startCalculatedNavigation(); // Utiliser le trajet chargé pour naviguer
                             Navigator.pop(context);
                           }),
                         ],
@@ -945,6 +979,164 @@ class _NavigationViewState extends State<NavigationView> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildNavigationOverlay(BuildContext context, NavigationViewModel vm) {
+    final step = vm.nextStep!;
+    
+    return Positioned(
+      top: 10,
+      left: 15,
+      right: 15,
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppColors.primaryBlue.withValues(alpha: 0.95),
+          borderRadius: BorderRadius.circular(15),
+          boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 10, offset: Offset(0, 4))],
+        ),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                _getStepIcon(step.type),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        step.instruction,
+                        style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (step.name.isNotEmpty)
+                        Text(
+                          step.name,
+                          style: const TextStyle(color: Colors.white70, fontSize: 13),
+                          maxLines: 1,
+                        ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      _formatDistance(vm.distanceToNextStep),
+                      style: const TextStyle(color: AppColors.tertiaryYellow, fontSize: 18, fontWeight: FontWeight.w900),
+                    ),
+                    const Text('RESTE', style: TextStyle(color: Colors.white54, fontSize: 9)),
+                  ],
+                ),
+              ],
+            ),
+            const Divider(color: Colors.white24, height: 15),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _buildOverlayMiniStat('Arrivée', _formatArrivalTime(vm.durationToArrival)),
+                _buildOverlayMiniStat('Distance', _formatDistance(vm.distanceToArrival)),
+                _buildOverlayMiniStat('Temps', _formatDuration(vm.durationToArrival)),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOverlayMiniStat(String label, String value) {
+    return Column(
+      children: [
+        Text(label, style: const TextStyle(color: Colors.white54, fontSize: 9)),
+        Text(value, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+      ],
+    );
+  }
+
+  Widget _getStepIcon(int type) {
+    IconData icon;
+    switch (type) {
+      case 0: icon = Icons.arrow_upward; break; // Left
+      case 1: icon = Icons.arrow_upward; break; // Right
+      case 2: icon = Icons.turn_left; break; // Sharp left
+      case 3: icon = Icons.turn_right; break; // Sharp right
+      case 4: icon = Icons.turn_slight_left; break; // Slight left
+      case 5: icon = Icons.turn_slight_right; break; // Slight right
+      case 6: icon = Icons.arrow_forward; break; // Straight
+      case 7: icon = Icons.rotate_left; break; // Roundabout
+      case 8: icon = Icons.u_turn_left; break; // U-turn
+      case 10: icon = Icons.flag; break; // Arrived
+      case 11: icon = Icons.departure_board; break; // Depart
+      default: icon = Icons.navigation;
+    }
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+      child: Icon(icon, color: AppColors.primaryBlue, size: 28),
+    );
+  }
+
+  String _formatDistance(double meters) {
+    if (meters < 1000) return '${meters.toInt()}m';
+    return '${(meters / 1000).toStringAsFixed(1)}km';
+  }
+
+  String _formatDuration(double seconds) {
+    final minutes = (seconds / 60).round();
+    if (minutes < 60) return '$minutes min';
+    return '${minutes ~/ 60}h ${minutes % 60}min';
+  }
+
+  String _formatArrivalTime(double secondsRemaining) {
+    final arrival = DateTime.now().add(Duration(seconds: secondsRemaining.toInt()));
+    return DateFormat('HH:mm').format(arrival);
+  }
+
+  void _showFollowImportedConfirm(BuildContext context, NavigationViewModel viewModel) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Trajet importé'),
+        content: const Text('Souhaitez-vous lancer le suivi GPS pour ce trajet ?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('NON')),
+          ElevatedButton(
+            onPressed: () {
+              viewModel.startCalculatedNavigation();
+              Navigator.pop(context);
+              setState(() => _showRoutePanel = false);
+            },
+            child: const Text('OUI, LANCER'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDeleteConfirm(BuildContext context, NavigationViewModel viewModel, RecordedTrip trip) {
+    final l10n = AppLocalizations.of(context)!;
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(l10n.deleteTrip),
+        content: Text('Voulez-vous vraiment supprimer définitivement le trajet "${trip.name}" ?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: Text(l10n.cancel)),
+          ElevatedButton(
+            onPressed: () {
+              viewModel.deleteTrip(trip);
+              Navigator.pop(context);
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: Text(l10n.delete, style: const TextStyle(color: Colors.white)),
+          ),
+        ],
       ),
     );
   }
@@ -1036,7 +1228,7 @@ class _NavigationViewState extends State<NavigationView> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceAround,
                         children: [
-                          _buildStatItem(l10n.speed, '${vm.currentSpeed.toStringAsFixed(1)}', 'km/h', icon: Icons.speed, color: Colors.greenAccent),
+                          _buildStatItem(l10n.speed, vm.currentSpeed.toStringAsFixed(1), 'km/h', icon: Icons.speed, color: Colors.greenAccent),
                           _buildStatItem(l10n.distance, '${vm.totalDistance.toStringAsFixed(2)}', 'km', icon: Icons.straighten),
                           _buildStatItem(l10n.altitude, '${vm.altitude.toInt()}', 'm', icon: Icons.terrain, color: Colors.blueAccent),
                         ],

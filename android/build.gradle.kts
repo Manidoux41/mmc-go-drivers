@@ -12,9 +12,11 @@ val newBuildDir: Directory =
 rootProject.layout.buildDirectory.value(newBuildDir)
 
 subprojects {
-    val newSubprojectBuildDir: Directory = newBuildDir.dir(project.name)
-    project.layout.buildDirectory.value(newSubprojectBuildDir)
+    project.plugins.withId("org.jetbrains.kotlin.android") {
+        project.extensions.getByType<org.jetbrains.kotlin.gradle.dsl.KotlinProjectExtension>().jvmToolchain(17)
+    }
 }
+
 subprojects {
     project.evaluationDependsOn(":app")
 }

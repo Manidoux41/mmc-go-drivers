@@ -167,5 +167,6 @@
   "mapLayers": "طبقات الخريطة",
   "standardView": "عرض المخطط",
   "satelliteView": "عرض القمر الصناعي",
-  "terrainView": "عرض التضاريس"
+  "terrainView": "عرض التضاريس",
+  "deleteTrip": "حذف الرحلة"
 }

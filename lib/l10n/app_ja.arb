@@ -167,5 +167,6 @@
   "mapLayers": "マップレイヤー",
   "standardView": "平面ビュー",
   "satelliteView": "サテライトビュー",
-  "terrainView": "地形ビュー"
+  "terrainView": "地形ビュー",
+  "deleteTrip": "旅行を削除"
 }
